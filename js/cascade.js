@@ -64,7 +64,7 @@ $(function(){
 	var hueMultiplier = 360 / numOfColors;
 	var randFunc = function() { return 0.5 - Math.random() };
 	var seed = Math.random().toString().substr(2);
-	seed = '5076753909233958';
+	//seed = '5076753909233958';
 	Math.seedrandom(seed);
 	console.log(seed);
 	var circles = [];
@@ -294,7 +294,7 @@ $(function(){
 		return emptyRequiredCells;
 	}
 	
-	function linkCells(srcCell, dstCell) {
+	function linkCells(srcCell, dstCell, color) {
 		var srcObj = getObject(srcCell);
 		if (srcObj.constructor == Circle)
 			srcObj.linkedCell = dstCell;
@@ -306,7 +306,7 @@ $(function(){
 			dstObj.linkedCell = srcCell;
 		else
 			dstObj.prevCell = srcCell;
-		drawDirection(srcCell, dstCell, dstCircle.color);
+		drawDirection(srcCell, dstCell, color);
 	}
 	function unlinkCells(srcCell, dstCell) {
 		var srcObj = getObject(srcCell);
@@ -350,7 +350,7 @@ $(function(){
 		return foundDstCircle || 1;
 	}
 	
-	function traverseCells(prevCell, curCell, dstCircle) {
+	function traverseCells(prevCell, curCell, dstCircle, colorIndex) {
 		var obj = getObject(curCell);
 		var done = obj == dstCircle;
 		
@@ -362,42 +362,45 @@ $(function(){
 		if (deadSpotResult == 1)
 			return false;
 		
-		if (prevCell) linkCells(prevCell, curCell);
+		if (prevCell) linkCells(prevCell, curCell, dstCircle.color);
 		
-		if (done) return true;
-		
-		var alreadyTried = [];
-		if (deadSpotResult.constructor == Cell) {
-			if (traverseCells(curCell, deadSpotResult, dstCircle))
+		if (done) {
+			if (startNewColor(colorIndex + 1))
 				return true;
-			alreadyTried.push(deadSpotResult);
-		}
-		
-		var nextCells = getAdjacentCells(curCell);
-		nextCells.remove(alreadyTried);
-		for (var i = 0; i < nextCells.length; i++) {
-			var nextCell = nextCells[i];
-			//don't cut off a corner cell
-			if (checkForRequiredDirection(nextCell))
-			{
-				if (traverseCells(curCell, nextCell, dstCircle))
+		} else {
+			var alreadyTried = [];
+			if (deadSpotResult.constructor == Cell) {
+				if (traverseCells(curCell, deadSpotResult, dstCircle, colorIndex))
 					return true;
-				alreadyTried.push(nextCell);
+				alreadyTried.push(deadSpotResult);
 			}
-		}
-		nextCells.remove(alreadyTried);
-		for (var i = 0; i < nextCells.length; i++) {
-			var nextCell = nextCells[i];
-			if (traverseCells(curCell, nextCell, dstCircle))
-				return true;
+			
+			var nextCells = getAdjacentCells(curCell);
+			nextCells.remove(alreadyTried);
+			for (var i = 0; i < nextCells.length; i++) {
+				var nextCell = nextCells[i];
+				//don't cut off a corner cell
+				if (checkForRequiredDirection(nextCell))
+				{
+					if (traverseCells(curCell, nextCell, dstCircle, colorIndex))
+						return true;
+					alreadyTried.push(nextCell);
+				}
+			}
+			nextCells.remove(alreadyTried);
+			for (var i = 0; i < nextCells.length; i++) {
+				var nextCell = nextCells[i];
+				if (traverseCells(curCell, nextCell, dstCircle, colorIndex))
+					return true;
+			}
 		}
 		
 		if (prevCell) unlinkCells(prevCell, curCell);
 		return false;
 	}
 	
-	function pairCircles(srcCircle, dstCircle) {		
-		return traverseCells(null, srcCircle.cell, dstCircle);
+	function pairCircles(srcCircle, dstCircle, colorIndex) {		
+		return traverseCells(null, srcCircle.cell, dstCircle, colorIndex);
 	}
 	
 	// function isConnectedEmptyCellCountLessThan(cell, count) {
@@ -425,33 +428,27 @@ $(function(){
 		colors.push(color);
 		historicCirclePlacement[color] = [];
 	}
-	var colorIndex = 0;
-	while (colorIndex < colors.length) {
-		var circleGroup = placeCircles(colors[colorIndex]);
-		if (!circleGroup) {
-			var color = colors[--colorIndex];
-			var circlePlacement = historicCirclePlacement[color].peek();
-			var srcCircle = getObject(circlePlacement.srcCell);
-			var dstCircle = getObject(circlePlacement.dstCell);
-			var curCell = dstCircle.cell;
-			var prevCell = dstCircle.linkedCell;
+	
+	function startNewColor(colorIndex) {
+		if (colorIndex != colors.length) {
+			var canPairCircles;
 			do {
-				unlinkCells(prevCell, curCell);
-				curCell = prevCell;
-				var prevObj = getObject(prevCell);
-				prevCell = prevObj.constructor == Circle ? prevObj.linkedCell : prevObj.prevCell;
-			} while (curCell != srcCircle.cell);
-			throw 'expected fail';
+				var circleGroup = placeCircles(colors[colorIndex]);
+				if (!circleGroup)
+					return false;
+				var srcCircle = circleGroup.srcCircle;
+				var dstCircle = circleGroup.dstCircle;
+				if (!(canPairCircles = pairCircles(srcCircle, dstCircle, colorIndex))) {
+					setObject(srcCircle.cell, null);
+					setObject(dstCircle.cell, null);
+					deleteCircle(srcCircle);
+					deleteCircle(dstCircle);
+				}
+			} while (!canPairCircles);
 		}
-		var srcCircle = circleGroup.srcCircle;
-		var dstCircle = circleGroup.dstCircle;
-		if (!pairCircles(srcCircle, dstCircle)) {
-			setObject(srcCircle.cell, null);
-			setObject(dstCircle.cell, null);
-			deleteCircle(srcCircle);
-			deleteCircle(dstCircle);
-		} else colorIndex++;
+		return true;
 	}
+	startNewColor(0);
 });
 
 function Direction(x, y) {
