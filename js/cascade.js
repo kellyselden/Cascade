@@ -60,7 +60,7 @@ $(function(){
 	
 	var circleMidpoint = cellSize / 2;
 	var circleRadius = cellSize / 4;
-	var numOfColors = 2;//Math.min(rowCount, colCount);
+	var numOfColors = -1;//Math.min(rowCount, colCount);
 	var hueMultiplier = 360 / numOfColors;
 	var randFunc = function() { return 0.5 - Math.random() };
 	var seed = Math.random().toString().substr(2);
@@ -103,14 +103,14 @@ $(function(){
 		return getObstacleCount(cell) == 3;
 	}
 	
-	function placeCircle(cell, color) {
-		var circle = new Circle(cell, color);
+	function placeCircle(cell, colorIndex) {
+		var circle = new Circle(cell, colorIndex);
 		setObject(cell, circle);
 		circles.push(circle);
 		return circle;
 	}	
-	function hasPlacementBeenTried(circlePlacement, color) {
-		var circlePlacements = historicCirclePlacement[color];
+	function hasPlacementBeenTried(circlePlacement, colorIndex) {
+		var circlePlacements = historicCirclePlacement[colorIndex];
 		for (var i = 0; i < circlePlacements.length; i++) {
 			var cp = circlePlacements[i];
 			if ((cp.srcCell == circlePlacement.srcCell &&
@@ -121,8 +121,8 @@ $(function(){
 		}
 		return false;
 	}	
-	function placeCirclesByRound(firstCollection, secondCollection, color) {
-		var circlePlacements = historicCirclePlacement[color];
+	function placeCirclesByRound(firstCollection, secondCollection, colorIndex) {
+		var circlePlacements = historicCirclePlacement[colorIndex];
 		var secondCollectionSource = secondCollection;
 		for (var i = 0; i < firstCollection.length; i++) {
 			var srcCell = firstCollection[i];
@@ -423,13 +423,20 @@ $(function(){
 	
 	var colors = [];
 	var historicCirclePlacement = [];
-	for (var i = 0; i < numOfColors; i++) {
-		var color = convertHsvToRgb(i * hueMultiplier, 1, 1);
-		colors.push(color);
-		historicCirclePlacement[color] = [];
-	}
+//	for (var i = 0; i < numOfColors; i++) {
+// 		var color = convertHsvToRgb(i * hueMultiplier, 1, 1);
+// 		colors.push(color);
+// 		historicCirclePlacement[color] = [];
+// 	}
 	
 	function startNewColor(colorIndex) {
+		if (colorIndex == colors.length) {
+			if (colorIndex < numOfColors || (numOfColors == -1 && emptyCells.length > 0)) {
+				var color = convertHsvToRgb(colorIndex * hueMultiplier, 1, 1);
+				colors.push(color);
+				historicCirclePlacement[color] = [];
+			}
+		}
 		if (colorIndex != colors.length) {
 			var canPairCircles;
 			do {
@@ -461,8 +468,10 @@ function Cell(row, col) {
 	this.col = col;
 }
 
-function Circle(cell, color, linkedCell) {
+function Circle(cell, colorIndex, color, linkedCell) {
 	this.cell = cell;
+	//used for checking color before number of colors is determined
+	this.colorIndex = colorIndex;
 	this.color = color;
 	this.linkedCell = linkedCell;
 }
