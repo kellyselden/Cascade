@@ -31,8 +31,8 @@ $(function(){
 	var gridHeight = gridDiv.height();
 	var gridWidth = gridDiv.width();
 	
-	var rowCount = 4;
-	var colCount = 4;
+	var rowCount = 6;
+	var colCount = 6;
 	var cellCount = rowCount * colCount;
 	
 	var cellHeight = (gridHeight - rowCount - 1) / rowCount;
@@ -61,10 +61,9 @@ $(function(){
 	var circleMidpoint = cellSize / 2;
 	var circleRadius = cellSize / 4;
 	var numOfColors = -1;//Math.min(rowCount, colCount);
-	var hueMultiplier = 360 / numOfColors;
 	var randFunc = function() { return 0.5 - Math.random() };
 	var seed = Math.random().toString().substr(2);
-	//seed = '5076753909233958';
+	seed = '7623555522877723';
 	Math.seedrandom(seed);
 	console.log(seed);
 	var circles = [];
@@ -132,11 +131,11 @@ $(function(){
 				for (var j = 0; j < secondCollection.length; j++) {
 					var dstCell = secondCollection[j];
 					var circlePlacement = new CirclePlacement(srcCell, dstCell);
-					if (hasPlacementBeenTried(circlePlacement, color))
+					if (hasPlacementBeenTried(circlePlacement, colorIndex))
 						continue;
 					if (canCellAcceptDstCircle(dstCell, srcCell)) {
-						var srcCircle = placeCircle(srcCell, color);
-						var dstCircle = placeCircle(dstCell, color);
+						var srcCircle = placeCircle(srcCell, colorIndex);
+						var dstCircle = placeCircle(dstCell, colorIndex);
 						drawCircle(srcCircle);
 						drawCircle(dstCircle);
 						circlePlacements.push(circlePlacement);
@@ -148,20 +147,20 @@ $(function(){
 		return undefined;
 	}
 	
-	function placeCircles(color) {
+	function placeCircles(colorIndex) {
 		emptyCells.sort(randFunc);
 		
 		var emptyRequiredCells = getEmptyRequiredCells();
 		var retVal = placeCirclesByRound(emptyRequiredCells, emptyRequiredCells.length == 1
-			? emptyCells : emptyRequiredCells, color);
+			? emptyCells : emptyRequiredCells, colorIndex);
 		if (retVal) return retVal;
 		
 		var emptyNonRequiredCells = emptyCells.slice(0);
 		emptyNonRequiredCells.remove(emptyRequiredCells);
-		var retVal = placeCirclesByRound(emptyNonRequiredCells, emptyNonRequiredCells, color);
+		var retVal = placeCirclesByRound(emptyNonRequiredCells, emptyNonRequiredCells, colorIndex);
 		if (retVal) return retVal;
 		
-		historicCirclePlacement[color] = [];
+		historicCirclePlacement.pop();
 		return undefined;
 	}
 	
@@ -175,7 +174,8 @@ $(function(){
 					'cx="' + circleMidpoint + '" ' +
 					'cy="' + circleMidpoint + '" ' +
 					'r="' + circleRadius + '" ' +
-					'fill="' + circle.color + '" ' +
+					'colorIndex="' + circle.colorIndex + '" ' +
+					'fill="black" ' +
 				'/>' +
 			'</svg>'
 		);
@@ -183,7 +183,7 @@ $(function(){
 	function deleteCircle(circle) {
 		getCellDiv(circle.cell).find('.circle').remove();
 	}
-	function drawDirection(thisCell, nextCell, color) {
+	function drawDirection(thisCell, nextCell, colorIndex) {
 		var thisCellDiv = getCellDiv(thisCell);
 		var nextCellDiv = getCellDiv(nextCell);
 		var thisCellOffset = thisCellDiv.offset();
@@ -192,7 +192,8 @@ $(function(){
 		var x = nextCellOffset.left - thisCellOffset.left;
 		thisCellDiv.append(
 			$('<div class="link"></div>')
-				.css('background-color', color)
+				.attr('colorIndex', colorIndex)
+				.css('background-color', 'black')
 				.height(Math.max(Math.abs(y), 1))
 				.width(Math.max(Math.abs(x), 1))
 				.offset({
@@ -294,7 +295,7 @@ $(function(){
 		return emptyRequiredCells;
 	}
 	
-	function linkCells(srcCell, dstCell, color) {
+	function linkCells(srcCell, dstCell, colorIndex) {
 		var srcObj = getObject(srcCell);
 		if (srcObj.constructor == Circle)
 			srcObj.linkedCell = dstCell;
@@ -306,7 +307,7 @@ $(function(){
 			dstObj.linkedCell = srcCell;
 		else
 			dstObj.prevCell = srcCell;
-		drawDirection(srcCell, dstCell, color);
+		drawDirection(srcCell, dstCell, colorIndex);
 	}
 	function unlinkCells(srcCell, dstCell) {
 		var srcObj = getObject(srcCell);
@@ -362,7 +363,7 @@ $(function(){
 		if (deadSpotResult == 1)
 			return false;
 		
-		if (prevCell) linkCells(prevCell, curCell, dstCircle.color);
+		if (prevCell) linkCells(prevCell, curCell, dstCircle.colorIndex);
 		
 		if (done) {
 			if (startNewColor(colorIndex + 1))
@@ -403,12 +404,6 @@ $(function(){
 		return traverseCells(null, srcCircle.cell, dstCircle, colorIndex);
 	}
 	
-	// function isConnectedEmptyCellCountLessThan(cell, count) {
-		// return getConnectedEmptyCellCount(cell, count) < count;
-	// }
-	// function getConnectedEmptyCellCount(cell, shortCircuitValue) {
-		// return getConnectedEmptyCells(cell, [], shortCircuitValue).length;
-	// }
 	function getConnectedEmptyCells(curCell, emptyCells, shortCircuitValue) {
 		if (emptyCells.length == shortCircuitValue ||
 			//don't double count
@@ -421,26 +416,13 @@ $(function(){
 		return emptyCells;
 	}
 	
-	var colors = [];
 	var historicCirclePlacement = [];
-//	for (var i = 0; i < numOfColors; i++) {
-// 		var color = convertHsvToRgb(i * hueMultiplier, 1, 1);
-// 		colors.push(color);
-// 		historicCirclePlacement[color] = [];
-// 	}
-	
 	function startNewColor(colorIndex) {
-		if (colorIndex == colors.length) {
-			if (colorIndex < numOfColors || (numOfColors == -1 && emptyCells.length > 0)) {
-				var color = convertHsvToRgb(colorIndex * hueMultiplier, 1, 1);
-				colors.push(color);
-				historicCirclePlacement[color] = [];
-			}
-		}
-		if (colorIndex != colors.length) {
+		if (colorIndex < numOfColors || (numOfColors == -1 && emptyCells.length > 0)) {
+			historicCirclePlacement.push([]);
 			var canPairCircles;
 			do {
-				var circleGroup = placeCircles(colors[colorIndex]);
+				var circleGroup = placeCircles(colorIndex);
 				if (!circleGroup)
 					return false;
 				var srcCircle = circleGroup.srcCircle;
@@ -456,6 +438,13 @@ $(function(){
 		return true;
 	}
 	startNewColor(0);
+	
+	var hueMultiplier = 360 / historicCirclePlacement.length;
+	for (var colorIndex = 0; colorIndex < historicCirclePlacement.length; colorIndex++) {
+		var color = convertHsvToRgb(colorIndex * hueMultiplier, 1, 1);
+		gridDiv.find('circle[colorIndex="' + colorIndex + '"]').attr('fill', color);
+		gridDiv.find('.link[colorIndex="' + colorIndex + '"]').css('background-color', color);
+	}
 });
 
 function Direction(x, y) {
@@ -468,11 +457,9 @@ function Cell(row, col) {
 	this.col = col;
 }
 
-function Circle(cell, colorIndex, color, linkedCell) {
+function Circle(cell, colorIndex, linkedCell) {
 	this.cell = cell;
-	//used for checking color before number of colors is determined
 	this.colorIndex = colorIndex;
-	this.color = color;
 	this.linkedCell = linkedCell;
 }
 
