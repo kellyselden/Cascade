@@ -63,7 +63,7 @@ $(function(){
 	var numOfColors = -1;//Math.min(rowCount, colCount);
 	var randFunc = function() { return 0.5 - Math.random() };
 	var seed = Math.random().toString().substr(2);
-	seed = '7623555522877723';
+	//seed = '7664092734921724';
 	Math.seedrandom(seed);
 	console.log(seed);
 	var circles = [];
@@ -160,7 +160,6 @@ $(function(){
 		var retVal = placeCirclesByRound(emptyNonRequiredCells, emptyNonRequiredCells, colorIndex);
 		if (retVal) return retVal;
 		
-		historicCirclePlacement.pop();
 		return undefined;
 	}
 	
@@ -302,7 +301,7 @@ $(function(){
 		else
 			srcObj.nextCell = dstCell;
 		var dstObj = getObject(dstCell);
-		if (!dstObj) setObject(dstCell, dstObj = new Link());
+		if (!dstObj) setObject(dstCell, dstObj = new Link(colorIndex));
 		if (dstObj.constructor == Circle)
 			dstObj.linkedCell = srcCell;
 		else
@@ -328,7 +327,7 @@ $(function(){
 		var deadEnds = 0;
 		var foundDstCircle;
 		var original = getObject(cell); //bad design
-		setObject(cell, new Link());
+		setObject(cell, new Link()); //bad design
 		for (var i = 0; i < adjacentEmptyCells.length; i++) {
 			var adjacentEmptyCell = adjacentEmptyCells[i];
 			var connectedEmptyCells = getConnectedEmptyCells(adjacentEmptyCell, [], 3);
@@ -343,7 +342,7 @@ $(function(){
 				deadEnds++;
 			}
 		}
-		setObject(cell, original);
+		setObject(cell, original); //bad design
 		if (deadEnds > 1)
 			return 1;
 		if (deadEnds == 0)
@@ -351,7 +350,7 @@ $(function(){
 		return foundDstCircle || 1;
 	}
 	
-	function traverseCells(prevCell, curCell, dstCircle, colorIndex) {
+	function traverseCells(prevCell, curCell, dstCircle) {
 		var obj = getObject(curCell);
 		var done = obj == dstCircle;
 		
@@ -366,12 +365,12 @@ $(function(){
 		if (prevCell) linkCells(prevCell, curCell, dstCircle.colorIndex);
 		
 		if (done) {
-			if (startNewColor(colorIndex + 1))
+			if (startNewColor(dstCircle.colorIndex + 1))
 				return true;
 		} else {
 			var alreadyTried = [];
 			if (deadSpotResult.constructor == Cell) {
-				if (traverseCells(curCell, deadSpotResult, dstCircle, colorIndex))
+				if (traverseCells(curCell, deadSpotResult, dstCircle))
 					return true;
 				alreadyTried.push(deadSpotResult);
 			}
@@ -379,19 +378,23 @@ $(function(){
 			var nextCells = getAdjacentCells(curCell);
 			nextCells.remove(alreadyTried);
 			for (var i = 0; i < nextCells.length; i++) {
+				if (shouldSkipColor(dstCircle.colorIndex))
+					break;
 				var nextCell = nextCells[i];
 				//don't cut off a corner cell
 				if (checkForRequiredDirection(nextCell))
 				{
-					if (traverseCells(curCell, nextCell, dstCircle, colorIndex))
+					if (traverseCells(curCell, nextCell, dstCircle))
 						return true;
 					alreadyTried.push(nextCell);
 				}
 			}
 			nextCells.remove(alreadyTried);
 			for (var i = 0; i < nextCells.length; i++) {
+				if (shouldSkipColor(dstCircle.colorIndex))
+					break;
 				var nextCell = nextCells[i];
-				if (traverseCells(curCell, nextCell, dstCircle, colorIndex))
+				if (traverseCells(curCell, nextCell, dstCircle))
 					return true;
 			}
 		}
@@ -400,8 +403,8 @@ $(function(){
 		return false;
 	}
 	
-	function pairCircles(srcCircle, dstCircle, colorIndex) {		
-		return traverseCells(null, srcCircle.cell, dstCircle, colorIndex);
+	function pairCircles(srcCircle, dstCircle) {		
+		return traverseCells(null, srcCircle.cell, dstCircle);
 	}
 	
 	function getConnectedEmptyCells(curCell, emptyCells, shortCircuitValue) {
@@ -416,22 +419,47 @@ $(function(){
 		return emptyCells;
 	}
 	
+	//if the remaining area is impossible to fill
+	//this will help short circuit colors to get area opened up
+	var colorToRevert = null;
+	function setColorToRevert() {
+		for (var i = 0; i < emptyCells.length; i++) {
+			var objs = getAdjacentObjects(emptyCells[i]);
+			for (var j = 0; j < objs.length; j++) {
+				var colorIndex = objs[j].colorIndex;
+				if (colorToRevert == null || colorIndex < colorToRevert)
+					colorToRevert = colorIndex;
+			}
+		}
+	}
+	function shouldSkipColor(colorIndex) {
+		return colorToRevert != null && colorToRevert != colorIndex;
+	}
+	
 	var historicCirclePlacement = [];
 	function startNewColor(colorIndex) {
 		if (colorIndex < numOfColors || (numOfColors == -1 && emptyCells.length > 0)) {
 			historicCirclePlacement.push([]);
+			colorToRevert = null;
 			var canPairCircles;
 			do {
 				var circleGroup = placeCircles(colorIndex);
-				if (!circleGroup)
+				if (!circleGroup) {
+					setColorToRevert();
+					historicCirclePlacement.pop();
 					return false;
+				}
 				var srcCircle = circleGroup.srcCircle;
 				var dstCircle = circleGroup.dstCircle;
-				if (!(canPairCircles = pairCircles(srcCircle, dstCircle, colorIndex))) {
+				if (!(canPairCircles = pairCircles(srcCircle, dstCircle))) {
 					setObject(srcCircle.cell, null);
 					setObject(dstCircle.cell, null);
 					deleteCircle(srcCircle);
 					deleteCircle(dstCircle);
+					if (shouldSkipColor(colorIndex)) {
+						historicCirclePlacement.pop();
+						return false;
+					}
 				}
 			} while (!canPairCircles);
 		}
@@ -463,7 +491,8 @@ function Circle(cell, colorIndex, linkedCell) {
 	this.linkedCell = linkedCell;
 }
 
-function Link(prevCell, nextCell) {
+function Link(colorIndex, prevCell, nextCell) {
+	this.colorIndex = colorIndex;
 	this.prevCell = prevCell;
 	this.nextCell = nextCell;
 }
