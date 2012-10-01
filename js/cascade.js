@@ -60,10 +60,10 @@ $(function(){
 	
 	var circleMidpoint = cellSize / 2;
 	var circleRadius = cellSize / 4;
-	var numOfColors = -1;//Math.min(rowCount, colCount);
+	var numOfColors = 6;//Math.min(rowCount, colCount);
 	var randFunc = function() { return 0.5 - Math.random() };
 	var seed = Math.random().toString().substr(2);
-	//seed = '7664092734921724';
+	//seed = '27878770721144974';
 	Math.seedrandom(seed);
 	console.log(seed);
 	var circles = [];
@@ -438,6 +438,10 @@ $(function(){
 	
 	var historicCirclePlacement = [];
 	function startNewColor(colorIndex) {
+		if (colorIndex == numOfColors && emptyCells.length > 0) {
+			setColorToRevert();
+			return false;
+		}
 		if (colorIndex < numOfColors || (numOfColors == -1 && emptyCells.length > 0)) {
 			historicCirclePlacement.push([]);
 			colorToRevert = null;
