@@ -1,3 +1,7 @@
+body {
+	background-color: black;
+}
+
 #grid {
 	width: 300px;
 	height: 300px;
@@ -21,6 +25,7 @@
 
 .row, .cell {
 	border-width: 1px;
+	border-color: white;
 }
 
 .link {

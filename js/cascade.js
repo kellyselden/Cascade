@@ -174,7 +174,7 @@ $(function(){
 					'cy="' + circleMidpoint + '" ' +
 					'r="' + circleRadius + '" ' +
 					'colorIndex="' + circle.colorIndex + '" ' +
-					'fill="black" ' +
+					'fill="white" ' +
 				'/>' +
 			'</svg>'
 		);
@@ -192,7 +192,7 @@ $(function(){
 		thisCellDiv.append(
 			$('<div class="link"></div>')
 				.attr('colorIndex', colorIndex)
-				.css('background-color', 'black')
+				.css('background-color', 'white')
 				.height(Math.max(Math.abs(y), 1))
 				.width(Math.max(Math.abs(x), 1))
 				.offset({
