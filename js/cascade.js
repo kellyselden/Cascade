@@ -32,7 +32,7 @@ $(function(){
 	var gridWidth = gridDiv.width();
 	
 	var rowCount = 6;
-	var colCount = 6;
+	var colCount = 3;
 	var cellCount = rowCount * colCount;
 	
 	var cellHeight = (gridHeight - rowCount - 1) / rowCount;
@@ -60,7 +60,7 @@ $(function(){
 	
 	var circleMidpoint = cellSize / 2;
 	var circleRadius = cellSize / 4;
-	var numOfColors = 6;//Math.min(rowCount, colCount);
+	var numOfColors = Math.min(rowCount, colCount);
 	var randFunc = function() { return 0.5 - Math.random() };
 	var seed = Math.random().toString().substr(2);
 	//seed = '27878770721144974';
@@ -477,7 +477,28 @@ $(function(){
 		gridDiv.find('circle[colorIndex="' + colorIndex + '"]').attr('fill', color);
 		gridDiv.find('.link[colorIndex="' + colorIndex + '"]').css('background-color', color);
 	}
+	
+	var rowsInput = $('#rows');
+	var colsInput = $('#cols');
+	var defaultColors = $('#defaultColors');
+	$('[name="colors"]').change(function() {
+		$('#specifyColorsDiv').toggle($('#specifyColors').attr('checked') == 'checked');
+	});
+	$('#generate').click(function() {
+		generate(
+			parseInt(rowsInput.val()),
+			parseInt(colsInput.val())
+		);
+	});
+	rowsInput.val(4);
+	colsInput.val(4);
+	$('#defaultColors').click();
+	$('#generate').click();
 });
+
+function generate(rowCount, colCount, numOfColors) {
+
+}
 
 function Direction(x, y) {
 	this.x = x;

@@ -10,5 +10,25 @@
 	</head>
 	<body>
 		<div id="grid"></div>
+		<div id="options">
+			<div><input type="text" id="rows" value="4" /> rows</div>
+			<div><input type="text" id="cols" value="4" /> columns</div>
+			<div>
+				<div>
+					<input type="radio" name="colors" id="defaultColors" title="Default colors" />
+					<label for="defaultColors">Default colors</label>
+				</div>
+				<div>
+					<input type="radio" name="colors" id="randomColors" title="Random colors" />
+					<label for="randomColors">Random colors</label>
+				</div>
+				<div>
+					<input type="radio" name="colors" id="specifyColors" title="Specify colors" />
+					<label for="specifyColors">Specify colors</label>
+				</div>
+				<div id="specifyColorsDiv"><input type="text" id="numOfColors" /> colors</div>
+			</div>
+			<div><input type="button" id="generate" value="Generate" /></div>
+		</div>
 	</body>
 </html>

@@ -1,5 +1,6 @@
 body {
 	background-color: black;
+	color: white;
 }
 
 #grid {
@@ -25,9 +26,16 @@ body {
 
 .row, .cell {
 	border-width: 1px;
-	border-color: white;
 }
 
 .link {
 	position: absolute;
+}
+
+#grid, #options {
+	float: left;
+}
+
+input[type="text"] {
+	width: 2em;
 }
