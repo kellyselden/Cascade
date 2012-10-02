@@ -9,10 +9,15 @@
 		<link type="text/css" rel="Stylesheet" href="css/cascade.css" />
 	</head>
 	<body>
+		<div>
+			<span id="rowsLabel"></span>x<span id="colsLabel"></span> -
+			<span id="numOfColorsLabel"></span> colors -
+			seed <span id="seedLabel"></span>
+		</div>
 		<div id="grid"></div>
 		<div id="options">
-			<div><input type="text" id="rows" value="4" /> rows</div>
-			<div><input type="text" id="cols" value="4" /> columns</div>
+			<div><input type="text" id="rows" /> <label for="rows">rows</label></div>
+			<div><input type="text" id="cols" /> <label for="cols">columns</label></div>
 			<div>
 				<div>
 					<input type="radio" name="colors" id="defaultColors" title="Default colors" />
@@ -28,6 +33,7 @@
 				</div>
 				<div id="specifyColorsDiv"><input type="text" id="numOfColors" /> colors</div>
 			</div>
+			<div><input id="seed" /> <label for="seed">seed</label></div>
 			<div><input type="button" id="generate" value="Generate" /></div>
 		</div>
 	</body>

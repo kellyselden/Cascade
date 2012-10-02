@@ -27,31 +27,33 @@ Array.prototype.contains = function(el) {
 };
 
 $(function() {
-	var rowsInput = $('#rows');
-	var colsInput = $('#cols');
+	var rows = $('#rows');
+	var cols = $('#cols');
 	var defaultColors = $('#defaultColors');
 	var randomColors = $('#randomColors');
 	var specifyColors = $('#specifyColors');
+	var seed = $('#seed');
 	var generateButton = $('#generate');
 	$('[name="colors"]').change(function() {
 		$('#specifyColorsDiv').toggle(specifyColors.attr('checked') == 'checked');
 	});
 	generateButton.click(function() {
 		generate(
-			parseInt(rowsInput.val()),
-			parseInt(colsInput.val()),
+			parseInt(rows.val()),
+			parseInt(cols.val()),
 			defaultColors.attr('checked') == 'checked' ? null
 				: randomColors.attr('checked') == 'checked' ? -1
-				: parseInt($('#numOfColors').val())
+				: parseInt($('#numOfColors').val()),
+			seed.val()
 		);
 	});
-	rowsInput.val(4);
-	colsInput.val(4);
+	rows.val(4);
+	cols.val(4);
 	defaultColors.click();
 	generateButton.click();
 });
 
-function generate(rowCount, colCount, numOfColors) {
+function generate(rowCount, colCount, numOfColors, seed) {
 	var gridDiv = $('#grid').empty();
 	var gridHeight = gridDiv.height();
 	var gridWidth = gridDiv.width();
@@ -85,10 +87,10 @@ function generate(rowCount, colCount, numOfColors) {
 	var circleRadius = cellSize / 4;
 	numOfColors = numOfColors || Math.min(rowCount, colCount);
 	var randFunc = function() { return 0.5 - Math.random() };
-	var seed = Math.random().toString().substr(2);
 	//seed = '27878770721144974';
+	seed = seed || Math.random().toString().substr(2);
 	Math.seedrandom(seed);
-	console.log(seed);
+	
 	var circles = [];
 	
 	function canCellAcceptSrcCircle(srcCell) {
@@ -500,6 +502,11 @@ function generate(rowCount, colCount, numOfColors) {
 		gridDiv.find('circle[colorIndex="' + colorIndex + '"]').attr('fill', color);
 		gridDiv.find('.link[colorIndex="' + colorIndex + '"]').css('background-color', color);
 	}
+	
+	$('#rowsLabel').text(rowCount);
+	$('#colsLabel').text(colCount);
+	$('#numOfColorsLabel').text(historicCirclePlacement.length);
+	$('#seedLabel').text(seed);
 }
 
 function Direction(x, y) {
