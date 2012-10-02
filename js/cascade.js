@@ -26,13 +26,36 @@ Array.prototype.contains = function(el) {
     return this.indexOf(el) > -1;
 };
 
-$(function(){
-	var gridDiv = $('#grid');
+$(function() {
+	var rowsInput = $('#rows');
+	var colsInput = $('#cols');
+	var defaultColors = $('#defaultColors');
+	var randomColors = $('#randomColors');
+	var specifyColors = $('#specifyColors');
+	var generateButton = $('#generate');
+	$('[name="colors"]').change(function() {
+		$('#specifyColorsDiv').toggle(specifyColors.attr('checked') == 'checked');
+	});
+	generateButton.click(function() {
+		generate(
+			parseInt(rowsInput.val()),
+			parseInt(colsInput.val()),
+			defaultColors.attr('checked') == 'checked' ? null
+				: randomColors.attr('checked') == 'checked' ? -1
+				: parseInt($('#numOfColors').val())
+		);
+	});
+	rowsInput.val(4);
+	colsInput.val(4);
+	defaultColors.click();
+	generateButton.click();
+});
+
+function generate(rowCount, colCount, numOfColors) {
+	var gridDiv = $('#grid').empty();
 	var gridHeight = gridDiv.height();
 	var gridWidth = gridDiv.width();
 	
-	var rowCount = 6;
-	var colCount = 3;
 	var cellCount = rowCount * colCount;
 	
 	var cellHeight = (gridHeight - rowCount - 1) / rowCount;
@@ -60,7 +83,7 @@ $(function(){
 	
 	var circleMidpoint = cellSize / 2;
 	var circleRadius = cellSize / 4;
-	var numOfColors = Math.min(rowCount, colCount);
+	numOfColors = numOfColors || Math.min(rowCount, colCount);
 	var randFunc = function() { return 0.5 - Math.random() };
 	var seed = Math.random().toString().substr(2);
 	//seed = '27878770721144974';
@@ -477,27 +500,6 @@ $(function(){
 		gridDiv.find('circle[colorIndex="' + colorIndex + '"]').attr('fill', color);
 		gridDiv.find('.link[colorIndex="' + colorIndex + '"]').css('background-color', color);
 	}
-	
-	var rowsInput = $('#rows');
-	var colsInput = $('#cols');
-	var defaultColors = $('#defaultColors');
-	$('[name="colors"]').change(function() {
-		$('#specifyColorsDiv').toggle($('#specifyColors').attr('checked') == 'checked');
-	});
-	$('#generate').click(function() {
-		generate(
-			parseInt(rowsInput.val()),
-			parseInt(colsInput.val())
-		);
-	});
-	rowsInput.val(4);
-	colsInput.val(4);
-	$('#defaultColors').click();
-	$('#generate').click();
-});
-
-function generate(rowCount, colCount, numOfColors) {
-
 }
 
 function Direction(x, y) {
