@@ -7,8 +7,17 @@ $(function() {
 	var specifyColors = $('#specifyColors');
 	var seedInput = $('#seed');
 	
+	var gridHeight = gridDiv.height();
+	var gridWidth = gridDiv.width();
+	
 	var randFunc = function() { return 0.5 - Math.random() };
-		
+	
+	var cells;
+	var emptyCells;
+	var gridArray;
+	var circleMidpoint;
+	var circleRadius;
+	
 	function canCellAcceptSrcCircle(srcCell) {
 		return true;
 	}
@@ -46,7 +55,6 @@ $(function() {
 	function placeCircle(cell, colorIndex) {
 		var circle = new Circle(cell, colorIndex);
 		setObject(cell, circle);
-		circles.push(circle);
 		return circle;
 	}	
 	function hasPlacementBeenTried(circlePlacement, colorIndex) {
@@ -247,7 +255,7 @@ $(function() {
 			dstObj.linkedCell = srcCell;
 		else
 			dstObj.prevCell = srcCell;
-		drawDirection(srcCell, dstCell, colorIndex);
+		//drawDirection(srcCell, dstCell, colorIndex);
 	}
 	function unlinkCells(srcCell, dstCell) {
 		var srcObj = getObject(srcCell);
@@ -260,7 +268,7 @@ $(function() {
 			dstObj.linkedCell = null;
 		else
 			setObject(dstCell, null);
-		deleteDirection(srcCell);
+		//deleteDirection(srcCell);
 	}
 	
 	function checkForDeadSpot(cell, dstCircle) {
@@ -360,20 +368,75 @@ $(function() {
 		return emptyCells;
 	}
 	
-	function generate(rowCount, colCount, numOfColors) {
-		var gridDiv = $('#grid').empty();
-		var gridHeight = gridDiv.height();
-		var gridWidth = gridDiv.width();
+	//if the remaining area is impossible to fill
+	//this will help short circuit colors to get area opened up
+	var colorToRevert = null;
+	function setColorToRevert() {
+		for (var i = 0; i < emptyCells.length; i++) {
+			var objs = getAdjacentObjects(emptyCells[i]);
+			for (var j = 0; j < objs.length; j++) {
+				var colorIndex = objs[j].colorIndex;
+				if (colorToRevert == null || colorIndex < colorToRevert)
+					colorToRevert = colorIndex;
+			}
+		}
+	}
+	function shouldSkipColor(colorIndex) {
+		return colorToRevert != null && colorToRevert != colorIndex;
+	}
+	
+	var historicCirclePlacement;
+	function startNewColor(colorIndex) {
+		if (colorIndex == numOfColors && emptyCells.length > 0) {
+			setColorToRevert();
+			return false;
+		}
+		if (colorIndex < numOfColors || (numOfColors == -1 && emptyCells.length > 0)) {
+			historicCirclePlacement.push([]);
+			colorToRevert = null;
+			var canPairCircles;
+			do {
+				var circleGroup = placeCircles(colorIndex);
+				if (!circleGroup) {
+					setColorToRevert();
+					historicCirclePlacement.pop();
+					return false;
+				}
+				var srcCircle = circleGroup.srcCircle;
+				var dstCircle = circleGroup.dstCircle;
+				if (!(canPairCircles = pairCircles(srcCircle, dstCircle))) {
+					setObject(srcCircle.cell, null);
+					setObject(dstCircle.cell, null);
+					deleteCircle(srcCircle);
+					deleteCircle(dstCircle);
+					if (shouldSkipColor(colorIndex)) {
+						historicCirclePlacement.pop();
+						return false;
+					}
+				}
+			} while (!canPairCircles);
+		}
+		return true;
+	}
+	
+	function generate() {
+		gridDiv.empty();
 		
-		var cellCount = rowCount * colCount;
+		rowCount = parseInt(rowsInput.val());
+		colCount = parseInt(colsInput.val());
+		
+		numOfColors = defaultColors.attr('checked') == 'checked'
+			? Math.min(rowCount, colCount) : randomColors.attr('checked') == 'checked'
+			? -1 : parseInt($('#numOfColors').val());
 		
 		var cellHeight = (gridHeight - rowCount - 1) / rowCount;
 		var cellWidth = (gridWidth - colCount - 1) / colCount;
 		var cellSize = Math.min(cellHeight, cellWidth);
 		
-		var cells = [];
-		var emptyCells = [];
-		var gridArray = [];
+		cells = [];
+		emptyCells = [];
+		gridArray = [];
+		historicCirclePlacement = [];
 		for (var row = 0; row < rowCount; row++) {
 			var rowDiv = $('<div class="row"></div>');
 			for (var col = 0; col < colCount; col++) {
@@ -390,66 +453,13 @@ $(function() {
 			gridArray[row] = [];
 		}
 		
-		var circleMidpoint = cellSize / 2;
-		var circleRadius = cellSize / 4;
-		numOfColors = numOfColors || Math.min(rowCount, colCount);
+		circleMidpoint = cellSize / 2;
+		circleRadius = cellSize / 4;
 		
 		var seed = seedInput.val() || Math.random().toString().substr(2);
 		//seed = '27878770721144974';
 		Math.seedrandom(seed);
 		
-		var circles = [];
-		
-		//if the remaining area is impossible to fill
-		//this will help short circuit colors to get area opened up
-		var colorToRevert = null;
-		function setColorToRevert() {
-			for (var i = 0; i < emptyCells.length; i++) {
-				var objs = getAdjacentObjects(emptyCells[i]);
-				for (var j = 0; j < objs.length; j++) {
-					var colorIndex = objs[j].colorIndex;
-					if (colorToRevert == null || colorIndex < colorToRevert)
-						colorToRevert = colorIndex;
-				}
-			}
-		}
-		function shouldSkipColor(colorIndex) {
-			return colorToRevert != null && colorToRevert != colorIndex;
-		}
-		
-		var historicCirclePlacement = [];
-		function startNewColor(colorIndex) {
-			if (colorIndex == numOfColors && emptyCells.length > 0) {
-				setColorToRevert();
-				return false;
-			}
-			if (colorIndex < numOfColors || (numOfColors == -1 && emptyCells.length > 0)) {
-				historicCirclePlacement.push([]);
-				colorToRevert = null;
-				var canPairCircles;
-				do {
-					var circleGroup = placeCircles(colorIndex);
-					if (!circleGroup) {
-						setColorToRevert();
-						historicCirclePlacement.pop();
-						return false;
-					}
-					var srcCircle = circleGroup.srcCircle;
-					var dstCircle = circleGroup.dstCircle;
-					if (!(canPairCircles = pairCircles(srcCircle, dstCircle))) {
-						setObject(srcCircle.cell, null);
-						setObject(dstCircle.cell, null);
-						deleteCircle(srcCircle);
-						deleteCircle(dstCircle);
-						if (shouldSkipColor(colorIndex)) {
-							historicCirclePlacement.pop();
-							return false;
-						}
-					}
-				} while (!canPairCircles);
-			}
-			return true;
-		}
 		startNewColor(0);
 		
 		var hueMultiplier = 360 / historicCirclePlacement.length;
@@ -468,14 +478,16 @@ $(function() {
 	function play() {
 		var mouseDown;
 		var circle;
-		var gridDiv = $('#grid');
 		gridDiv.find('circle').mousedown(function() {
 			mouseDown = true;
 			circle = this;
 		});
 		gridDiv.find('.cell').mouseenter(function() {
 			if (!mouseDown) return;
-			
+			var cell = $(this);
+			var row = cell.parent();
+			var col = $.inArray(this, cell.siblings());
+			var row = $.inArray(this, cell.siblings());
 		});
 	}
 	
@@ -483,15 +495,7 @@ $(function() {
 	$('[name="colors"]').change(function() {
 		$('#specifyColorsDiv').toggle(specifyColors.attr('checked') == 'checked');
 	});
-	generateButton.click(function() {
-		generate(
-			parseInt(rowsInput.val()),
-			parseInt(colsInput.val()),
-			defaultColors.attr('checked') == 'checked' ? null
-				: randomColors.attr('checked') == 'checked' ? -1
-				: parseInt($('#numOfColors').val())
-		);
-	});
+	generateButton.click(generate);
 	rowsInput.val(4);
 	colsInput.val(4);
 	defaultColors.click();
