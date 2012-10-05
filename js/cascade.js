@@ -115,6 +115,13 @@ $(function() {
 	function getCellDiv(cell) {
 		return gridDiv.children().eq(cell.row).children().eq(cell.col);
 	}
+	function getCellByDiv(cellDiv) {
+		var rowDiv = cellDiv.parent();
+		var col = $.inArray(cellDiv[0], rowDiv.children());
+		var row = $.inArray(rowDiv[0], gridDiv.children());
+		return getCell(row, col);
+	}
+	
 	function drawCircle(circle) {
 		getCellDiv(circle.cell).append(
 			'<svg class="circle" xmlns="http://www.w3.org/2000/svg" version="1.1">' +
@@ -131,7 +138,7 @@ $(function() {
 	function deleteCircle(circle) {
 		getCellDiv(circle.cell).find('.circle').remove();
 	}
-	function drawDirection(thisCell, nextCell, colorIndex) {
+	function drawDirection(thisCell, nextCell, colorIndex, color) {
 		var thisCellDiv = getCellDiv(thisCell);
 		var nextCellDiv = getCellDiv(nextCell);
 		var thisCellOffset = thisCellDiv.offset();
@@ -141,7 +148,7 @@ $(function() {
 		thisCellDiv.append(
 			$('<div class="link"></div>')
 				.attr('colorIndex', colorIndex)
-				.css('background-color', 'white')
+				.css('background-color', color)
 				.height(Math.max(Math.abs(y), 1))
 				.width(Math.max(Math.abs(x), 1))
 				.offset({
@@ -243,32 +250,36 @@ $(function() {
 		return emptyRequiredCells;
 	}
 	
-	function linkCells(srcCell, dstCell, colorIndex) {
-		var srcObj = getObject(srcCell);
-		if (srcObj.constructor == Circle)
-			srcObj.linkedCell = dstCell;
+	function linkCells(prevCell, curCell, colorIndex) {
+		var prevObj = getObject(prevCell);
+		if (prevObj.constructor == Circle)
+			prevObj.linkedCell = curCell;
 		else
-			srcObj.nextCell = dstCell;
-		var dstObj = getObject(dstCell);
-		if (!dstObj) setObject(dstCell, dstObj = new Link(colorIndex));
-		if (dstObj.constructor == Circle)
-			dstObj.linkedCell = srcCell;
+			prevObj.nextCell = curCell;
+		var curObj = getObject(curCell);
+		if (!curObj) setObject(curCell, curObj = new Link(colorIndex));
+		if (curObj.constructor == Circle)
+			curObj.linkedCell = prevCell;
 		else
-			dstObj.prevCell = srcCell;
-		//drawDirection(srcCell, dstCell, colorIndex);
+			curObj.prevCell = prevCell;
+		//drawDirection(prevCell, curCell, colorIndex, 'white');
 	}
-	function unlinkCells(srcCell, dstCell) {
-		var srcObj = getObject(srcCell);
-		if (srcObj.constructor == Circle)
-			srcObj.linkedCell = null;
+	function unlinkCells(prevCell) {
+		var curCell;
+		var prevObj = getObject(prevCell);
+		if (prevObj.constructor == Circle) {
+			curCell = prevObj.linkedCell;
+			prevObj.linkedCell = null;
+		} else {
+			curCell = prevObj.nextCell;
+			prevObj.nextCell = null;
+		}
+		var curObj = getObject(curCell);
+		if (curObj.constructor == Circle)
+			curObj.linkedCell = null;
 		else
-			srcObj.nextCell = null;
-		var dstObj = getObject(dstCell);
-		if (dstObj.constructor == Circle)
-			dstObj.linkedCell = null;
-		else
-			setObject(dstCell, null);
-		//deleteDirection(srcCell);
+			setObject(curCell, null);
+		//deleteDirection(prevCell);
 	}
 	
 	function checkForDeadSpot(cell, dstCircle) {
@@ -348,7 +359,7 @@ $(function() {
 			}
 		}
 		
-		if (prevCell) unlinkCells(prevCell, curCell);
+		if (prevCell) unlinkCells(prevCell);
 		return false;
 	}
 	
@@ -474,22 +485,6 @@ $(function() {
 		$('#numOfColorsLabel').text(historicCirclePlacement.length);
 		$('#seedLabel').text(seed);
 	}
-
-	function play() {
-		var mouseDown;
-		var circle;
-		gridDiv.find('circle').mousedown(function() {
-			mouseDown = true;
-			circle = this;
-		});
-		gridDiv.find('.cell').mouseenter(function() {
-			if (!mouseDown) return;
-			var cell = $(this);
-			var row = cell.parent();
-			var col = $.inArray(this, cell.siblings());
-			var row = $.inArray(this, cell.siblings());
-		});
-	}
 	
 	var generateButton = $('#generate');
 	$('[name="colors"]').change(function() {
@@ -500,6 +495,53 @@ $(function() {
 	colsInput.val(4);
 	defaultColors.click();
 	generateButton.click();
+	
+	function deleteDirections(cell, endCell) {
+		if (cell == endCell) return;
+		var nextCell = getObject(startCell).prevCell;
+		deleteDirection(cell);
+		deleteDirections(nextCell, endCell);
+	}
+
+	function play() {
+		var mouseDown;
+		var arcCircle;
+		var colorIndex;
+		var color;
+		var lastCell;
+		var isInvalidCell;
+		gridDiv.find('circle').mousedown(function() {
+			mouseDown = true;
+			arcCircle = $(this);
+			colorIndex = arcCircle.attr('colorIndex');
+			color = arcCircle.attr('fill');
+			lastCell = getCellByDiv(arcCircle.closest('.cell'));
+			return false;
+		});
+		gridDiv.find('.cell').mouseenter(function() {
+			if (!mouseDown) return;
+			var cellDiv = $(this);
+			var circle = cellDiv.find('circle');
+			if (circle.length && circle.attr('fill') != color)
+				return;
+			var cell = getCellByDiv(cellDiv);
+			var link = cell.find('.link');
+			if (link.css('background-color') == color) {
+				deleteDirections(lastCell, cell);
+				return;
+			}
+			if ($.inArray(
+			drawDirection(lastCell, cell, colorIndex, color);
+			if (circle.length) return;
+			lastCell = cell;
+		});
+		function mouseUp() {
+			mouseDown = false;
+		}
+		gridDiv.mouseup(mouseUp);
+		$(document).mouseleave(mouseUp);
+	}
+	play();
 });
 
 function Direction(x, y) {
