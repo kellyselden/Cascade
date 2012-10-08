@@ -13,10 +13,10 @@ $(function() {
 	var randFunc = function() { return 0.5 - Math.random() };
 	
 	var cells;
-	var emptyCells;
-	var gridArray;
+	var gridArray, solvedGridArray;
 	var circleMidpoint;
 	var circleRadius;
+	var debug = false;
 	
 	function canCellAcceptSrcCircle(srcCell) {
 		return true;
@@ -42,7 +42,7 @@ $(function() {
 		var obstacleCount = getBorderCount(cell);
 		var nextCells = getAdjacentCells(cell);
 		for (var i = 0; i < nextCells.length; i++)
-			if (getObject(nextCells[i]))
+			if (gridArray.getObject(nextCells[i]))
 				obstacleCount++;
 		return obstacleCount;
 	}
@@ -54,7 +54,7 @@ $(function() {
 	
 	function placeCircle(cell, colorIndex) {
 		var circle = new Circle(cell, colorIndex);
-		setObject(cell, circle);
+		gridArray.setObject(cell, circle);
 		return circle;
 	}	
 	function hasPlacementBeenTried(circlePlacement, colorIndex) {
@@ -97,14 +97,14 @@ $(function() {
 	}
 	
 	function placeCircles(colorIndex) {
-		emptyCells.sort(randFunc);
+		gridArray.emptyCells.sort(randFunc);
 		
 		var emptyRequiredCells = getEmptyRequiredCells();
 		var retVal = placeCirclesByRound(emptyRequiredCells, emptyRequiredCells.length == 1
-			? emptyCells : emptyRequiredCells, colorIndex);
+			? gridArray.emptyCells : emptyRequiredCells, colorIndex);
 		if (retVal) return retVal;
 		
-		var emptyNonRequiredCells = emptyCells.slice(0);
+		var emptyNonRequiredCells = gridArray.emptyCells.slice(0);
 		emptyNonRequiredCells.remove(emptyRequiredCells);
 		var retVal = placeCirclesByRound(emptyNonRequiredCells, emptyNonRequiredCells, colorIndex);
 		if (retVal) return retVal;
@@ -178,15 +178,6 @@ $(function() {
 		return getCell(cell.row + direction.y, cell.col + direction.x);
 	}
 	
-	function getObject(cell) {
-		return gridArray[cell.row][cell.col];
-	}
-	function setObject(cell, obj) {
-		gridArray[cell.row][cell.col] = obj;
-		if (obj) emptyCells.remove(cell);
-		else emptyCells.push(cell);
-	}
-	
 	//might need to gut this if it isn't going to be used dual-function
 	function createDirectionsArray() {
 		var directions = [];
@@ -216,7 +207,7 @@ $(function() {
 		var nextCells = getAdjacentCells(cell, true);
 		var objects = [];
 		for (var i = 0; i < nextCells.length; i++) {
-			var obj = getObject(nextCells[i]);
+			var obj = gridArray.getObject(nextCells[i]);
 			if (obj) objects.push(obj);
 		}
 		return objects;
@@ -226,7 +217,7 @@ $(function() {
 		var adjacentEmptyCells = [];
 		for (var i = 0; i < nextCells.length; i++) {
 			var nextCell = nextCells[i];
-			if (!getObject(nextCell)) adjacentEmptyCells.push(nextCell);
+			if (!gridArray.getObject(nextCell)) adjacentEmptyCells.push(nextCell);
 		}
 		return adjacentEmptyCells;
 	}
@@ -242,52 +233,56 @@ $(function() {
 	
 	function getEmptyRequiredCells() {
 		var emptyRequiredCells = [];
-		for (var i = 0; i < emptyCells.length; i++) {
-			var emptyCell = emptyCells[i];
+		for (var i = 0; i < gridArray.emptyCells.length; i++) {
+			var emptyCell = gridArray.emptyCells[i];
 			if (isRequiredEndpoint(emptyCell))
 				emptyRequiredCells.push(emptyCell);
 		}
 		return emptyRequiredCells;
 	}
 	
-	function linkCells(prevCell, curCell, colorIndex) {
-		var prevObj = getObject(prevCell);
+	function linkCells(prevCell, curCell, paint, colorIndex, color) {
+		var prevObj = gridArray.getObject(prevCell);
 		if (prevObj.constructor == Circle)
 			prevObj.linkedCell = curCell;
 		else
 			prevObj.nextCell = curCell;
-		var curObj = getObject(curCell);
-		if (!curObj) setObject(curCell, curObj = new Link(colorIndex));
+		var curObj = gridArray.getObject(curCell);
+		if (!curObj) gridArray.setObject(curCell, curObj = new Link(colorIndex));
 		if (curObj.constructor == Circle)
 			curObj.linkedCell = prevCell;
 		else
 			curObj.prevCell = prevCell;
-		//drawDirection(prevCell, curCell, colorIndex, 'white');
+		if (paint)
+			drawDirection(prevCell, curCell, colorIndex || 0, color || 'white');
 	}
-	function unlinkCells(prevCell) {
-		var curCell;
-		var prevObj = getObject(prevCell);
-		if (prevObj.constructor == Circle) {
-			curCell = prevObj.linkedCell;
-			prevObj.linkedCell = null;
-		} else {
-			curCell = prevObj.nextCell;
-			prevObj.nextCell = null;
-		}
-		var curObj = getObject(curCell);
-		if (curObj.constructor == Circle)
+	function unlinkCells(curCell, endCell, paint) {
+		if (curCell == endCell) return;
+		var nextCell;
+		var curObj = gridArray.getObject(curCell);
+		if (curObj.constructor == Circle) {
+			nextCell = curObj.linkedCell;
 			curObj.linkedCell = null;
+		} else {
+			nextCell = curObj.prevCell;
+			gridArray.setObject(curCell, null);
+		}
+		var nextObj = gridArray.getObject(nextCell);
+		if (nextObj.constructor == Circle)
+			nextObj.linkedCell = null;
 		else
-			setObject(curCell, null);
-		//deleteDirection(prevCell);
+			nextObj.nextCell = null;
+		if (paint)
+			deleteDirection(nextCell);
+		unlinkCells(nextCell, endCell, paint);
 	}
 	
 	function checkForDeadSpot(cell, dstCircle) {
 		var adjacentEmptyCells = getAdjacentEmptyCells(cell);
 		var deadEnds = 0;
 		var foundDstCircle;
-		var original = getObject(cell); //bad design
-		setObject(cell, new Link()); //bad design
+		var original = gridArray.getObject(cell); //bad design
+		gridArray.setObject(cell, new Link()); //bad design
 		for (var i = 0; i < adjacentEmptyCells.length; i++) {
 			var adjacentEmptyCell = adjacentEmptyCells[i];
 			var connectedEmptyCells = getConnectedEmptyCells(adjacentEmptyCell, [], 3);
@@ -302,7 +297,7 @@ $(function() {
 				deadEnds++;
 			}
 		}
-		setObject(cell, original); //bad design
+		gridArray.setObject(cell, original); //bad design
 		if (deadEnds > 1)
 			return 1;
 		if (deadEnds == 0)
@@ -311,7 +306,7 @@ $(function() {
 	}
 	
 	function traverseCells(prevCell, curCell, dstCircle) {
-		var obj = getObject(curCell);
+		var obj = gridArray.getObject(curCell);
 		var done = obj == dstCircle;
 		
 		if (obj && //don't collide with another object
@@ -322,7 +317,7 @@ $(function() {
 		if (deadSpotResult == 1)
 			return false;
 		
-		if (prevCell) linkCells(prevCell, curCell, dstCircle.colorIndex);
+		if (prevCell) linkCells(prevCell, curCell, debug, dstCircle.colorIndex);
 		
 		if (done) {
 			if (startNewColor(dstCircle.colorIndex + 1))
@@ -359,12 +354,17 @@ $(function() {
 			}
 		}
 		
-		if (prevCell) unlinkCells(prevCell);
+		if (prevCell) unlinkCells(curCell, prevCell, debug);
 		return false;
 	}
 	
-	function pairCircles(srcCircle, dstCircle) {		
-		return traverseCells(null, srcCircle.cell, dstCircle);
+	function pairCircles(srcCircle, dstCircle) {
+		if (traverseCells(null, srcCircle.cell, dstCircle)) {
+			srcCircle.dstCircle = dstCircle;
+			dstCircle.srcCircle = srcCircle;
+			return true;
+		}
+		return false;
 	}
 	
 	function getConnectedEmptyCells(curCell, emptyCells, shortCircuitValue) {
@@ -383,8 +383,8 @@ $(function() {
 	//this will help short circuit colors to get area opened up
 	var colorToRevert = null;
 	function setColorToRevert() {
-		for (var i = 0; i < emptyCells.length; i++) {
-			var objs = getAdjacentObjects(emptyCells[i]);
+		for (var i = 0; i < gridArray.emptyCells.length; i++) {
+			var objs = getAdjacentObjects(gridArray.emptyCells[i]);
 			for (var j = 0; j < objs.length; j++) {
 				var colorIndex = objs[j].colorIndex;
 				if (colorToRevert == null || colorIndex < colorToRevert)
@@ -398,11 +398,11 @@ $(function() {
 	
 	var historicCirclePlacement;
 	function startNewColor(colorIndex) {
-		if (colorIndex == numOfColors && emptyCells.length > 0) {
+		if (colorIndex == numOfColors && gridArray.emptyCells.length > 0) {
 			setColorToRevert();
 			return false;
 		}
-		if (colorIndex < numOfColors || (numOfColors == -1 && emptyCells.length > 0)) {
+		if (colorIndex < numOfColors || (numOfColors == -1 && gridArray.emptyCells.length > 0)) {
 			historicCirclePlacement.push([]);
 			colorToRevert = null;
 			var canPairCircles;
@@ -416,8 +416,8 @@ $(function() {
 				var srcCircle = circleGroup.srcCircle;
 				var dstCircle = circleGroup.dstCircle;
 				if (!(canPairCircles = pairCircles(srcCircle, dstCircle))) {
-					setObject(srcCircle.cell, null);
-					setObject(dstCircle.cell, null);
+					gridArray.setObject(srcCircle.cell, null);
+					gridArray.setObject(dstCircle.cell, null);
 					deleteCircle(srcCircle);
 					deleteCircle(dstCircle);
 					if (shouldSkipColor(colorIndex)) {
@@ -445,8 +445,7 @@ $(function() {
 		var cellSize = Math.min(cellHeight, cellWidth);
 		
 		cells = [];
-		emptyCells = [];
-		gridArray = [];
+		gridArray = new Grid(rowCount, colCount);
 		historicCirclePlacement = [];
 		for (var row = 0; row < rowCount; row++) {
 			var rowDiv = $('<div class="row"></div>');
@@ -457,11 +456,9 @@ $(function() {
 				
 				var cell = new Cell(row, col);
 				cells.push(cell);
-				emptyCells.push(cell);
+				gridArray.emptyCells.push(cell);
 			}
 			gridDiv.append(rowDiv);
-			
-			gridArray[row] = [];
 		}
 		
 		circleMidpoint = cellSize / 2;
@@ -477,8 +474,23 @@ $(function() {
 		for (var colorIndex = 0; colorIndex < historicCirclePlacement.length; colorIndex++) {
 			var color = convertHsvToRgb(colorIndex * hueMultiplier, 1, 1);
 			gridDiv.find('circle[colorIndex="' + colorIndex + '"]').attr('fill', color);
-			gridDiv.find('.link[colorIndex="' + colorIndex + '"]').css('background-color', color);
+			if (debug)
+				gridDiv.find('.link[colorIndex="' + colorIndex + '"]').css('background-color', color);
 		}
+		
+		solvedGridArray = gridArray;
+		gridArray = new Grid(rowCount, colCount);
+		for (var row = 0; row < rowCount; row++) {
+			for (var col = 0; col < colCount; col++) {
+				var cell = getCell(row, col);
+				var obj = solvedGridArray.getObject(cell);
+				if (obj.constructor == Circle)
+					gridArray.setObject(cell, new Circle(
+						obj.cell, obj.colorIndex, obj.srcCircle, obj.dstCircle));
+			}
+		}
+		if (debug)
+			gridDiv.find('.link').remove();
 		
 		$('#rowsLabel').text(rowCount);
 		$('#colsLabel').text(colCount);
@@ -495,44 +507,62 @@ $(function() {
 	colsInput.val(4);
 	defaultColors.click();
 	generateButton.click();
-	
-	function deleteDirections(cell, endCell) {
-		if (cell == endCell) return;
-		var nextCell = getObject(startCell).prevCell;
-		deleteDirection(cell);
-		deleteDirections(nextCell, endCell);
-	}
 
 	function play() {
 		var mouseDown;
-		var arcCircle;
+		var srcCircle;
 		var colorIndex;
 		var color;
 		var lastCell;
 		var isInvalidCell;
 		gridDiv.find('circle').mousedown(function() {
 			mouseDown = true;
-			arcCircle = $(this);
-			colorIndex = arcCircle.attr('colorIndex');
-			color = arcCircle.attr('fill');
-			lastCell = getCellByDiv(arcCircle.closest('.cell'));
+			srcCircle = $(this);
+			colorIndex = srcCircle.attr('colorIndex');
+			color = srcCircle.attr('fill');
+			lastCell = getCellByDiv(srcCircle.closest('.cell'));
+			
+			//start line over
+			var circle = gridArray.getObject(lastCell);
+			if (circle.dstCircle)
+				circle = circle.dstCircle;
+			if (circle.linkedCell)
+				unlinkCells(circle.cell, circle.srcCircle.cell, true);
+			
 			return false;
 		});
 		gridDiv.find('.cell').mouseenter(function() {
 			if (!mouseDown) return;
 			var cellDiv = $(this);
-			var circle = cellDiv.find('circle');
-			if (circle.length && circle.attr('fill') != color)
+			if (!cellDiv.is('.cell'))
 				return;
+			
+			//couldn't go forward, then came back
 			var cell = getCellByDiv(cellDiv);
-			var link = cell.find('.link');
-			if (link.css('background-color') == color) {
-				deleteDirections(lastCell, cell);
+			if (cell == lastCell)
+				return;
+			
+			var link = cellDiv.find('.link');
+			if (link.length && link.attr('colorIndex') != colorIndex)
+				return;
+			
+			var circle = cellDiv.find('circle');
+			if (circle.length && circle.attr('colorIndex') != colorIndex)
+				return;
+			
+			//backtrack to close a loop
+			if (link.length) {
+				unlinkCells(lastCell, cell, true);
+				lastCell = cell;
 				return;
 			}
-			if ($.inArray(
-			drawDirection(lastCell, cell, colorIndex, color);
-			if (circle.length) return;
+			
+			//already done, don't go further
+			var lastCircle = getCellDiv(lastCell).find('circle');
+			if (lastCircle.length && lastCircle.attr('colorIndex') == colorIndex && lastCircle[0] != srcCircle[0])
+				return;
+			
+			linkCells(lastCell, cell, true, colorIndex, color);
 			lastCell = cell;
 		});
 		function mouseUp() {
@@ -544,6 +574,21 @@ $(function() {
 	play();
 });
 
+function Grid(rowCount, colCount) {
+	for (var row = 0; row < rowCount; row++) {
+		this[row] = [];
+	}
+	this.emptyCells = [];
+	this.getObject = function(cell) {
+		return this[cell.row][cell.col];
+	}
+	this.setObject = function(cell, obj) {
+		this[cell.row][cell.col] = obj;
+		if (obj) this.emptyCells.remove(cell);
+		else this.emptyCells.push(cell);
+	}
+}
+
 function Direction(x, y) {
 	this.x = x;
 	this.y = y;
@@ -554,9 +599,11 @@ function Cell(row, col) {
 	this.col = col;
 }
 
-function Circle(cell, colorIndex, linkedCell) {
+function Circle(cell, colorIndex, srcCircle, dstCircle, linkedCell) {
 	this.cell = cell;
 	this.colorIndex = colorIndex;
+	this.srcCircle = srcCircle;
+	this.dstCircle = dstCircle;
 	this.linkedCell = linkedCell;
 }
 
