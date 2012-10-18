@@ -14,7 +14,7 @@ $(function() {
 	
 	var cells;
 	var gridArray, solvedGridArray;
-	var circleMidpoint;
+	var circleDiameter;
 	var circleRadius;
 	var debug = false;
 	
@@ -124,15 +124,20 @@ $(function() {
 	
 	function drawCircle(circle) {
 		getCellDiv(circle.cell).append(
-			'<svg class="circle" xmlns="http://www.w3.org/2000/svg" version="1.1">' +
+			$('<svg class="circle" xmlns="http://www.w3.org/2000/svg" version="1.1">' +
 				'<circle ' +
-					'cx="' + circleMidpoint + '" ' +
-					'cy="' + circleMidpoint + '" ' +
+					'cx="' + circleRadius + '" ' +
+					'cy="' + circleRadius + '" ' +
 					'r="' + circleRadius + '" ' +
 					'colorIndex="' + circle.colorIndex + '" ' +
 					'fill="white" ' +
 				'/>' +
-			'</svg>'
+			'</svg>')
+				.height(circleDiameter)
+				.width(circleDiameter)
+				.css('position', 'absolute')
+				.css('left', circleRadius)
+				.css('top', circleRadius)
 		);
 	}
 	function deleteCircle(circle) {
@@ -152,8 +157,8 @@ $(function() {
 				.height(Math.max(Math.abs(y), 1))
 				.width(Math.max(Math.abs(x), 1))
 				.offset({
-					top: y / 2 || circleMidpoint,
-					left: x / 2 || circleMidpoint
+					top: y / 2 || circleDiameter,
+					left: x / 2 || circleDiameter
 				})
 		);
 	}
@@ -461,7 +466,7 @@ $(function() {
 			gridDiv.append(rowDiv);
 		}
 		
-		circleMidpoint = cellSize / 2;
+		circleDiameter = cellSize / 2;
 		circleRadius = cellSize / 4;
 		
 		var seed = seedInput.val() || Math.random().toString().substr(2);
@@ -520,20 +525,18 @@ $(function() {
 			srcCircle = $(this);
 			colorIndex = srcCircle.attr('colorIndex');
 			color = srcCircle.attr('fill');
-			lastCell = getCellByDiv(srcCircle.closest('.cell'));
 			
-			//start line over
-			var circle = gridArray.getObject(lastCell);
-			if (circle.dstCircle)
-				circle = circle.dstCircle;
-			if (circle.linkedCell)
-				unlinkCells(circle.cell, circle.srcCircle.cell, true);
+			var cell = getCellByDiv(srcCircle.closest('.cell'));
+			if (lastCell && lastCell != cell)
+				//start line over
+				unlinkCells(lastCell, cell, true);
+			lastCell = cell;
 			
 			return false;
 		});
-		gridDiv.find('.cell').mouseenter(function() {
+		gridDiv.find('.cell').mouseenter(function(e) {
 			if (!mouseDown) return;
-			var cellDiv = $(this);
+			var cellDiv = $(e.target);
 			if (!cellDiv.is('.cell'))
 				return;
 			
