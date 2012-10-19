@@ -545,16 +545,9 @@ $(function() {
 			if (cell == lastCell)
 				return;
 			
-			var link = cellDiv.find('.link');
-			if (link.length && link.attr('colorIndex') != colorIndex)
-				return;
-			
-			var circle = cellDiv.find('circle');
-			if (circle.length && circle.attr('colorIndex') != colorIndex)
-				return;
-			
 			//backtrack to close a loop
-			if (link.length) {
+			var link = cellDiv.find('.link');
+			if (link.length && link.attr('colorIndex') == colorIndex) {
 				unlinkCells(lastCell, cell, true);
 				lastCell = cell;
 				return;
@@ -564,6 +557,14 @@ $(function() {
 			var lastCircle = getCellDiv(lastCell).find('circle');
 			if (lastCircle.length && lastCircle.attr('colorIndex') == colorIndex && lastCircle[0] != srcCircle[0])
 				return;
+			
+			//besides your end circle, only move into empty adjacent cells
+			var circle = cellDiv.find('circle');
+			if (!circle.length || circle.attr('colorIndex') != colorIndex) {
+				var adjacentEmptyCells = getAdjacentEmptyCells(lastCell);
+				if (!adjacentEmptyCells.contains(cell))
+					return;
+			}
 			
 			linkCells(lastCell, cell, true, colorIndex, color);
 			lastCell = cell;
