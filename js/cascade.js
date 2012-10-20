@@ -294,7 +294,7 @@ $(function() {
 			if (connectedEmptyCells.length < 3) {
 				for (var j = 0; j < connectedEmptyCells.length; j++) {
 					var connectedEmptyCell = connectedEmptyCells[j];
-					if ($.inArray(dstCircle, getAdjacentObjects(connectedEmptyCell)) != -1) {
+					if (getAdjacentObjects(connectedEmptyCell).contains(dstCircle)) {
 						foundDstCircle = adjacentEmptyCell;
 						break;
 					}
@@ -375,7 +375,7 @@ $(function() {
 	function getConnectedEmptyCells(curCell, emptyCells, shortCircuitValue) {
 		if (emptyCells.length == shortCircuitValue ||
 			//don't double count
-			$.inArray(curCell, emptyCells) != -1)
+			emptyCells.contains(curCell))
 			return emptyCells;
 		emptyCells.push(curCell);
 		var nextCells = getAdjacentEmptyCells(curCell);
