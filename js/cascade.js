@@ -248,12 +248,17 @@ $(function() {
 	
 	function linkCells(prevCell, curCell, paint, colorIndex, color) {
 		var prevObj = gridArray.getObject(prevCell);
-		if (prevObj.constructor == Circle)
+		var step;
+		if (prevObj.constructor == Circle) {
 			prevObj.linkedCell = curCell;
-		else
+			step = 1;
+		}
+		else {
 			prevObj.nextCell = curCell;
+			step = prevObj.step + 1;
+		}
 		var curObj = gridArray.getObject(curCell);
-		if (!curObj) gridArray.setObject(curCell, curObj = new Link(colorIndex));
+		if (!curObj) gridArray.setObject(curCell, curObj = new Link(colorIndex, step));
 		if (curObj.constructor == Circle)
 			curObj.linkedCell = prevCell;
 		else
@@ -558,13 +563,20 @@ $(function() {
 			if (lastCircle.length && lastCircle.attr('colorIndex') == colorIndex && lastCircle[0] != srcCircle[0])
 				return;
 			
-			//besides your end circle, only move into empty adjacent cells
-			var circle = cellDiv.find('circle');
-			if (!circle.length || circle.attr('colorIndex') != colorIndex) {
-				var adjacentEmptyCells = getAdjacentEmptyCells(lastCell);
-				if (!adjacentEmptyCells.contains(cell))
-					return;
-			}
+			//can't move to taken cells, except if it's your end circle
+			var obj = gridArray.getObject(cell);
+			if (obj && !(obj.constructor == Circle && obj.colorIndex == colorIndex))
+				return;
+			
+			//only move one cell at a time
+			var foundLastCell;
+			var adjacentCells = getAdjacentCells(cell);
+			for (var i = 0; i < adjacentCells.length; i++)
+				if (adjacentCells[i] == lastCell) {
+					foundLastCell = true;
+					break;
+				}
+			if (!foundLastCell) return;
 			
 			linkCells(lastCell, cell, true, colorIndex, color);
 			lastCell = cell;
@@ -611,8 +623,9 @@ function Circle(cell, colorIndex, srcCircle, dstCircle, linkedCell) {
 	this.linkedCell = linkedCell;
 }
 
-function Link(colorIndex, prevCell, nextCell) {
+function Link(colorIndex, step, prevCell, nextCell) {
 	this.colorIndex = colorIndex;
+	this.step = step;
 	this.prevCell = prevCell;
 	this.nextCell = nextCell;
 }
