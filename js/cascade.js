@@ -525,21 +525,30 @@ $(function() {
 		var color;
 		var lastCell;
 		var isInvalidCell;
-		gridDiv.find('circle').mousedown(function() {
+		var endLinkCells = [];
+		gridDiv.find('.cell').mousedown(function() {
+			var cellDiv = $(this);
+			
+			var cell = getCellByDiv(cellDiv);
+			var obj = gridArray.getObject(cell);
+			if (obj && obj.constructor == Link) {
+				unlinkCells(endLinkCells[obj.colorIndex], cell, true);
+				srcCircle = gridDiv.find(
+			}
+			
+			
 			mouseDown = true;
-			srcCircle = $(this);
+			srcCircle = cellDiv.find('circle');
 			colorIndex = srcCircle.attr('colorIndex');
 			color = srcCircle.attr('fill');
 			
-			var cell = getCellByDiv(srcCircle.closest('.cell'));
 			if (lastCell && lastCell != cell)
 				//start line over
 				unlinkCells(lastCell, cell, true);
 			lastCell = cell;
 			
 			return false;
-		});
-		gridDiv.find('.cell').mouseenter(function(e) {
+		}).mouseenter(function(e) {
 			if (!mouseDown) return;
 			var cellDiv = $(e.target);
 			if (!cellDiv.is('.cell'))
@@ -583,6 +592,7 @@ $(function() {
 		});
 		function mouseUp() {
 			mouseDown = false;
+			endLinkCells[gridArray.getObject(lastCell).colorIndex] = lastCell;
 		}
 		gridDiv.mouseup(mouseUp);
 		$(document).mouseleave(mouseUp);
