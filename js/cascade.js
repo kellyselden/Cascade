@@ -520,12 +520,10 @@ $(function() {
 
 	function play() {
 		var mouseDown;
-		var srcCircle;
+		var startCellDiv;
 		var colorIndex;
 		var color;
 		var lastCell;
-		var isInvalidCell;
-		var endLinkCells = [];
 		gridDiv.find('.cell').mousedown(function() {
 			var cellDiv = $(this);
 			
@@ -534,24 +532,25 @@ $(function() {
 			if (!obj) return;
 			
 			colorIndex = obj.colorIndex;
-			var endCellDiv = gridDiv.find('.endCell').has('[colorIndex="' + colorIndex + '"]').removeClass('endCell');
-			var endCell = getCellByDiv(endCellDiv);
 			
-			if (obj.constructor == Link) {
-				unlinkCells(endCell, cell, true);
-				srcCircle = gridDiv.find('.startCell').has('circle[colorIndex="' + colorIndex + '"]');
-			} else {
-			--
-				srcCircle = cellDiv.find('circle');
-				cellDiv.addClass('startCell');
+			var startCellDiv = gridDiv.find('.startCell').has('circle[colorIndex="' + colorIndex + '"]');
+			if (startCellDiv.length) {
+				var startCell = getCellByDiv(startCellDiv);
+				var endCell = getCellByDiv(gridDiv.find('.endCell').has('[colorIndex="' + colorIndex + '"]').removeClass('endCell'));
+				if (obj.constructor == Link || cell == startCell) //need to backtrack
+					unlinkCells(endCell, cell, true);
+				else { //unfinished line, but you start from the other end
+					unlinkCells(endCell, startCell, true);
+					startCellDiv.removeClass('startCell');
+				}
 			}
 			
-			mouseDown = true;
-			color = srcCircle.attr('fill');
+			if (obj.constructor == Circle)
+				startCellDiv = cellDiv.addClass('startCell');
 			
-			if (lastCell && lastCell != cell)
-				//start line over
-				unlinkCells(lastCell, cell, true);
+			mouseDown = true;
+			color = startCellDiv.find('circle').attr('fill');
+			
 			lastCell = cell;
 			
 			return false;
@@ -575,8 +574,7 @@ $(function() {
 			}
 			
 			//already done, don't go further
-			var lastCircle = getCellDiv(lastCell).find('circle');
-			if (lastCircle.length && lastCircle.attr('colorIndex') == colorIndex && lastCircle[0] != srcCircle[0])
+			if (getCellDiv(lastCell).hasClass('endCell'))
 				return;
 			
 			//can't move to taken cells, except if it's your end circle
@@ -604,7 +602,6 @@ $(function() {
 				cellDiv.removeClass('startCell');
 			else
 				cellDiv.addClass('endCell');
-			//endLinkCells[gridArray.getObject(lastCell).colorIndex] = lastCell;
 		}
 		gridDiv.mouseup(mouseUp);
 		$(document).mouseleave(mouseUp);
