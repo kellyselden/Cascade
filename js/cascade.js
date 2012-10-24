@@ -533,18 +533,20 @@ $(function() {
 			var obj = gridArray.getObject(cell);
 			if (!obj) return;
 			
-			var endCell = gridDiv.find('.endCell').has('[colorIndex="' + obj.colorIndex + '"]').removeClass('endCell');
-			--
+			colorIndex = obj.colorIndex;
+			var endCellDiv = gridDiv.find('.endCell').has('[colorIndex="' + colorIndex + '"]').removeClass('endCell');
+			var endCell = getCellByDiv(endCellDiv);
+			
 			if (obj.constructor == Link) {
-				unlinkCells(endLinkCells[obj.colorIndex], cell, true);
-				srcCircle = gridDiv.find('circle[colorIndex="' + obj.colorIndex + '"]');
+				unlinkCells(endCell, cell, true);
+				srcCircle = gridDiv.find('.startCell').has('circle[colorIndex="' + colorIndex + '"]');
 			} else {
+			--
 				srcCircle = cellDiv.find('circle');
 				cellDiv.addClass('startCell');
 			}
 			
 			mouseDown = true;
-			colorIndex = srcCircle.attr('colorIndex');
 			color = srcCircle.attr('fill');
 			
 			if (lastCell && lastCell != cell)
