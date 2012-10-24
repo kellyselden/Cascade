@@ -531,14 +531,19 @@ $(function() {
 			
 			var cell = getCellByDiv(cellDiv);
 			var obj = gridArray.getObject(cell);
-			if (obj && obj.constructor == Link) {
+			if (!obj) return;
+			
+			var endCell = gridDiv.find('.endCell').has('[colorIndex="' + obj.colorIndex + '"]').removeClass('endCell');
+			--
+			if (obj.constructor == Link) {
 				unlinkCells(endLinkCells[obj.colorIndex], cell, true);
-				srcCircle = gridDiv.find(
+				srcCircle = gridDiv.find('circle[colorIndex="' + obj.colorIndex + '"]');
+			} else {
+				srcCircle = cellDiv.find('circle');
+				cellDiv.addClass('startCell');
 			}
 			
-			
 			mouseDown = true;
-			srcCircle = cellDiv.find('circle');
 			colorIndex = srcCircle.attr('colorIndex');
 			color = srcCircle.attr('fill');
 			
@@ -592,7 +597,12 @@ $(function() {
 		});
 		function mouseUp() {
 			mouseDown = false;
-			endLinkCells[gridArray.getObject(lastCell).colorIndex] = lastCell;
+			var cellDiv = $(this);
+			if (cellDiv.hasClass('startCell'))
+				cellDiv.removeClass('startCell');
+			else
+				cellDiv.addClass('endCell');
+			//endLinkCells[gridArray.getObject(lastCell).colorIndex] = lastCell;
 		}
 		gridDiv.mouseup(mouseUp);
 		$(document).mouseleave(mouseUp);
