@@ -520,10 +520,27 @@ $(function() {
 
 	function play() {
 		var mouseDown;
-		var startCellDiv;
 		var colorIndex;
 		var color;
 		var lastCell;
+		function updateClasses(lastCellDiv, curCellDiv) {
+			//code duplication, but easy to understand
+			if (lastCellDiv.find('circle').length) { //leaving from start
+				lastCellDiv.addClass('startCell');
+				curCellDiv.addClass('endCell');
+			} else if (curCellDiv.find('circle').length) { //reached a circle
+				if (curCellDiv.hasClass('startCell')) { //back to start
+					lastCellDiv.removeClass('endCell');
+					curCellDiv.removeClass('startCell');
+				} else { //reached the end
+					lastCellDiv.removeClass('endCell');
+					curCellDiv.addClass('endCell');
+				}
+			} else { //just another link
+				lastCellDiv.removeClass('endCell');
+				curCellDiv.addClass('endCell');
+			}
+		}
 		gridDiv.find('.cell').mousedown(function() {
 			var cellDiv = $(this);
 			
@@ -537,19 +554,14 @@ $(function() {
 			if (startCellDiv.length) {
 				var startCell = getCellByDiv(startCellDiv);
 				var endCell = getCellByDiv(gridDiv.find('.endCell').has('[colorIndex="' + colorIndex + '"]').removeClass('endCell'));
-				if (obj.constructor == Link || cell == startCell) //need to backtrack
-					unlinkCells(endCell, cell, true);
-				else { //unfinished line, but you start from the other end
-					unlinkCells(endCell, startCell, true);
+				unlinkCells(endCell, obj.constructor == Link ? cell : startCell, true);
+				if (obj.constructor == Circle)
 					startCellDiv.removeClass('startCell');
-				}
-			}
-			
-			if (obj.constructor == Circle)
-				startCellDiv = cellDiv.addClass('startCell');
+			} else
+				startCellDiv = cellDiv;
+			color = startCellDiv.find('circle').attr('fill');
 			
 			mouseDown = true;
-			color = startCellDiv.find('circle').attr('fill');
 			
 			lastCell = cell;
 			
@@ -565,16 +577,19 @@ $(function() {
 			if (cell == lastCell)
 				return;
 			
+			var lastCellDiv = getCellDiv(lastCell);
+			
 			//backtrack to close a loop
 			var link = cellDiv.find('.link');
 			if (link.length && link.attr('colorIndex') == colorIndex) {
 				unlinkCells(lastCell, cell, true);
+				updateClasses(lastCellDiv, cellDiv);
 				lastCell = cell;
 				return;
 			}
 			
 			//already done, don't go further
-			if (getCellDiv(lastCell).hasClass('endCell'))
+			if (lastCellDiv.hasClass('endCell'))
 				return;
 			
 			//can't move to taken cells, except if it's your end circle
@@ -593,16 +608,10 @@ $(function() {
 			if (!foundLastCell) return;
 			
 			linkCells(lastCell, cell, true, colorIndex, color);
+			updateClasses(lastCellDiv, cellDiv);
 			lastCell = cell;
 		});
-		function mouseUp() {
-			mouseDown = false;
-			var cellDiv = $(this);
-			if (cellDiv.hasClass('startCell'))
-				cellDiv.removeClass('startCell');
-			else
-				cellDiv.addClass('endCell');
-		}
+		function mouseUp() { mouseDown = false }
 		gridDiv.mouseup(mouseUp);
 		$(document).mouseleave(mouseUp);
 	}
