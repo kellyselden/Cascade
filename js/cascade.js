@@ -503,28 +503,26 @@ $(function() {
 		$('#colsLabel').text(colCount);
 		$('#numOfColorsLabel').text(historicCirclePlacement.length);
 		$('#seedLabel').text(seed);
+		
+		play();
 	}
-	
-	var generateButton = $('#generate');
-	$('[name="colors"]').change(function() {
-		$('#specifyColorsDiv').toggle(specifyColors.attr('checked') == 'checked');
-	});
-	generateButton.click(generate);
-	rowsInput.val(4);
-	colsInput.val(4);
-	defaultColors.click();
-	generateButton.click();
 
 	function play() {
 		var mouseDown;
 		var colorIndex;
 		var color;
 		var lastCell;
+		var didIWin;
 		function updateClasses(lastCellDiv, curCellDiv) {
 			//code duplication, but easy to understand
-			if (lastCellDiv.find('circle').length) { //leaving from start
-				lastCellDiv.addClass('startCell');
-				curCellDiv.addClass('endCell');
+			if (lastCellDiv.find('circle').length) { //moving from circle
+				if (lastCellDiv.hasClass('endCell')) { //leaving from end
+					lastCellDiv.removeClass('endCell');
+					curCellDiv.addClass('endCell');
+				} else { //leaving from start
+					lastCellDiv.addClass('startCell');
+					curCellDiv.addClass('endCell');
+				}
 			} else if (curCellDiv.find('circle').length) { //reached a circle
 				if (curCellDiv.hasClass('startCell')) { //back to start
 					lastCellDiv.removeClass('endCell');
@@ -551,9 +549,11 @@ $(function() {
 			if (startCellDiv.length) {
 				var startCell = getCellByDiv(startCellDiv);
 				var endCell = getCellByDiv(gridDiv.find('.endCell').has('[colorIndex="' + colorIndex + '"]').removeClass('endCell'));
-				unlinkCells(endCell, obj.constructor == Link ? cell : startCell, true);
+				unlinkCells(endCell, obj.constructor == Link || cell == endCell ? cell : startCell, true);
 				if (obj.constructor == Circle)
 					startCellDiv.removeClass('startCell');
+				else
+					cellDiv.addClass('endCell');
 			} else
 				startCellDiv = cellDiv;
 			color = startCellDiv.find('circle').attr('fill');
@@ -608,11 +608,36 @@ $(function() {
 			updateClasses(lastCellDiv, cellDiv);
 			lastCell = cell;
 		});
-		function mouseUp() { mouseDown = false }
+		function mouseUp() {
+			mouseDown = false;
+			
+			if (!didIWin) {
+				didIWin = true;
+				for (var row = 0; row < rowCount; row++) {
+					for (var col = 0; col < colCount; col++) {
+						if (!gridArray.getObject(getCell(row, col))) {
+							didIWin = false;
+							break;
+						}
+					}
+				}
+				if (didIWin)
+					alert('you win');
+			}
+		}
 		gridDiv.mouseup(mouseUp);
 		$(document).mouseleave(mouseUp);
 	}
-	play();
+	
+	var generateButton = $('#generate');
+	$('[name="colors"]').change(function() {
+		$('#specifyColorsDiv').toggle(specifyColors.attr('checked') == 'checked');
+	});
+	generateButton.click(generate);
+	rowsInput.val(4);
+	colsInput.val(4);
+	defaultColors.click();
+	generateButton.click();
 });
 
 function Grid(rowCount, colCount) {
