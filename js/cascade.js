@@ -14,8 +14,10 @@ $(function() {
 	
 	var cells;
 	var gridArray, solvedGridArray;
-	var circleDiameter;
-	var circleRadius;
+	var endPointDiameter;
+	var endPointRadius;
+	var linkJointDiameter;
+	var linkJointRadius;
 	var debug = false;
 	
 	function canCellAcceptSrcCircle(srcCell) {
@@ -85,8 +87,8 @@ $(function() {
 					if (canCellAcceptDstCircle(dstCell, srcCell)) {
 						var srcCircle = placeCircle(srcCell, colorIndex);
 						var dstCircle = placeCircle(dstCell, colorIndex);
-						drawCircle(srcCircle);
-						drawCircle(dstCircle);
+						drawEndPoint(srcCircle);
+						drawEndPoint(dstCircle);
 						circlePlacements.push(circlePlacement);
 						return { srcCircle: srcCircle, dstCircle: dstCircle };
 					}
@@ -122,41 +124,45 @@ $(function() {
 		return getCell(row, col);
 	}
 	
-	function drawCircle(circle) {
-		getCellDiv(circle.cell).append(
+	function drawCircle(cell, colorIndex, color, diameter, radius) {
+		getCellDiv(cell).append(
 			$('<svg class="circle" xmlns="http://www.w3.org/2000/svg" version="1.1">' +
 				'<circle ' +
-					'cx="' + circleRadius + '" ' +
-					'cy="' + circleRadius + '" ' +
-					'r="' + circleRadius + '" ' +
-					'colorIndex="' + circle.colorIndex + '" ' +
-					'fill="white" ' +
+					'cx="' + radius + '" ' +
+					'cy="' + radius + '" ' +
+					'r="' + radius + '" ' +
+					'colorIndex="' + colorIndex + '" ' +
+					'fill="' + color + '" ' +
 				'/>' +
 			'</svg>')
-				.height(circleDiameter)
-				.width(circleDiameter)
+				.height(diameter)
+				.width(diameter)
 				.css('position', 'absolute')
-				.css('left', circleRadius)
-				.css('top', circleRadius)
+				.css('left', radius)
+				.css('top', radius)
 		);
+	}
+	function drawEndPoint(circle) {
+		drawCircle(circle.cell, circle.colorIndex, 'white', endPointDiameter, endPointRadius);
 	}
 	function deleteCircle(circle) {
 		getCellDiv(circle.cell).find('.circle').remove();
 	}
 	function drawDirection(thisCell, nextCell, colorIndex, color) {
-		var y = (nextCell.row - thisCell.row) * circleDiameter;
-		var x = (nextCell.col - thisCell.col) * circleDiameter;
+		var y = (nextCell.row - thisCell.row) * endPointDiameter;
+		var x = (nextCell.col - thisCell.col) * endPointDiameter;
 		function getHtml(linkCell, x, y) {
 			return '<div class="link" colorIndex="' + colorIndex + '" linkCell="' + linkCell.index + '" style="' +
 				'background-color: ' + color + ';' +
 				'height: ' + Math.max(Math.abs(y), 1) + 'px;' +
 				'width: ' + Math.max(Math.abs(x), 1) + 'px;' +
-				'top: ' + Math.max(y || circleDiameter, 0) + 'px;' +
-				'left: ' + Math.max(x || circleDiameter, 0) + 'px;' +
+				'top: ' + Math.max(y || endPointDiameter, 0) + 'px;' +
+				'left: ' + Math.max(x || endPointDiameter, 0) + 'px;' +
 			'"></div>';
 		}
 		getCellDiv(thisCell).append(getHtml(nextCell, x, y));
 		getCellDiv(nextCell).append(getHtml(thisCell, -x, -y));
+		drawCircle(nextCell, colorIndex, color, linkJointDiameter, linkJointRadius);
 	}
 	function deleteDirection(thisCell, nextCell) {
 		getCellDiv(thisCell).find('[linkCell="' + nextCell.index + '"]').remove();
@@ -468,8 +474,10 @@ $(function() {
 			gridDiv.append(rowDiv);
 		}
 		
-		circleDiameter = cellSize / 2;
-		circleRadius = cellSize / 4;
+		endPointDiameter = cellSize / 2;
+		endPointRadius = cellSize / 4;
+		linkJointDiameter = cellSize / 6;
+		linkJointRadius = cellSize / 12;
 		
 		var seed = seedInput.val() || Math.random().toString().substr(2);
 		//seed = '27878770721144974';
