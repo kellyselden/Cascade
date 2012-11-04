@@ -6,6 +6,7 @@ body {
 #grid {
 	width: 300px;
 	height: 300px;
+	background-color: white;
 }
 
 .row {
@@ -22,6 +23,7 @@ body {
 	border-top-style: solid;
 	border-left-style: solid;
 	position: relative;
+	background-color: black;
 }
 
 .row, .cell {

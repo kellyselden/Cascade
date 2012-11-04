@@ -253,6 +253,7 @@ $(function() {
 	}
 	
 	function linkCells(prevCell, curCell, paint, colorIndex, color) {
+		color = color || 'white';
 		var prevObj = gridArray.getObject(prevCell);
 		var step;
 		if (prevObj.constructor == Circle) {
@@ -264,13 +265,13 @@ $(function() {
 			step = prevObj.step + 1;
 		}
 		var curObj = gridArray.getObject(curCell);
-		if (!curObj) gridArray.setObject(curCell, curObj = new Link(colorIndex, step));
+		if (!curObj) gridArray.setObject(curCell, curObj = new Link(colorIndex, color, step));
 		if (curObj.constructor == Circle)
 			curObj.linkedCell = prevCell;
 		else
 			curObj.prevCell = prevCell;
 		if (paint)
-			drawDirection(prevCell, curCell, colorIndex || 0, color || 'white');
+			drawDirection(prevCell, curCell, colorIndex, color);
 	}
 	function unlinkCells(curCell, endCell, paint) {
 		if (curCell == endCell) return;
@@ -492,6 +493,12 @@ $(function() {
 		var hueMultiplier = 360 / historicCirclePlacement.length;
 		for (var colorIndex = 0; colorIndex < historicCirclePlacement.length; colorIndex++) {
 			var color = convertHsvToRgb(colorIndex * hueMultiplier, 1, 1);
+			for (var i = 0; i < cells.length; i++) {
+				var cell = cells[i];
+				var obj = gridArray.getObject(cell);
+				if (obj && obj.constructor == Circle && obj.colorIndex == colorIndex)
+					obj.color = color;
+			}
 			gridDiv.find('.endCircle circle[colorIndex="' + colorIndex + '"]').attr('fill', color);
 			if (debug) {
 				gridDiv.find('.link[colorIndex="' + colorIndex + '"]').css('background-color', color);
@@ -501,14 +508,12 @@ $(function() {
 		
 		solvedGridArray = gridArray;
 		gridArray = new Grid(rowCount, colCount);
-		for (var row = 0; row < rowCount; row++) {
-			for (var col = 0; col < colCount; col++) {
-				var cell = getCell(row, col);
-				var obj = solvedGridArray.getObject(cell);
-				if (obj.constructor == Circle)
-					gridArray.setObject(cell, new Circle(
-						obj.cell, obj.colorIndex, obj.srcCircle, obj.dstCircle));
-			}
+		for (var i = 0; i < cells.length; i++) {
+			var cell = cells[i];
+			var obj = solvedGridArray.getObject(cell);
+			if (obj.constructor == Circle)
+				gridArray.setObject(cell, new Circle(
+					obj.cell, obj.colorIndex, obj.color, obj.srcCircle, obj.dstCircle));
 		}
 		if (debug)
 			gridDiv.find('.link').remove();
@@ -527,17 +532,10 @@ $(function() {
 		var color;
 		var lastCell;
 		var didIWin;
+		var cellDivs = gridDiv.find('.cell');
 		function updateClasses(lastCellDiv, curCellDiv) {
 			//code duplication, but easy to understand
-			if (lastCellDiv.find('.endCircle').length) { //moving from circle
-				if (lastCellDiv.hasClass('endCell')) { //leaving from end
-					lastCellDiv.removeClass('endCell');
-					curCellDiv.addClass('endCell');
-				} else { //leaving from start
-					lastCellDiv.addClass('startCell');
-					curCellDiv.addClass('endCell');
-				}
-			} else if (curCellDiv.find('.endCircle').length) { //reached a circle
+			if (curCellDiv.find('.endCircle').length) { //reached a circle
 				if (curCellDiv.hasClass('startCell')) { //back to start
 					lastCellDiv.removeClass('endCell');
 					curCellDiv.removeClass('startCell');
@@ -545,19 +543,38 @@ $(function() {
 					lastCellDiv.removeClass('endCell');
 					curCellDiv.addClass('endCell');
 				}
+			} else if (lastCellDiv.find('.endCircle').length) { //moving from circle
+				if (lastCellDiv.hasClass('endCell')) { //leaving from end
+					lastCellDiv.removeClass('endCell');
+					curCellDiv.addClass('endCell');
+				} else { //leaving from start
+					lastCellDiv.addClass('startCell');
+					curCellDiv.addClass('endCell');
+				}
 			} else { //just another link
 				lastCellDiv.removeClass('endCell');
 				curCellDiv.addClass('endCell');
 			}
 		}
-		gridDiv.find('.cell').mousedown(function() {
+		function highlightCell(cellDiv, obj) {
+			if (obj)
+				gridDiv.css('background-color', obj.color);
+			cellDiv.css('opacity', '0.75');
+		}
+		function unhighlightAll() {
+			gridDiv.css('background-color', '');
+			cellDivs.css('opacity', '');
+		}
+		cellDivs.mousedown(function() {
 			var cellDiv = $(this);
 			
 			var cell = getCellByDiv(cellDiv);
 			var obj = gridArray.getObject(cell);
-			if (!obj) return false;
+			if (!obj)
+				return false;
 			
 			colorIndex = obj.colorIndex;
+			color = obj.color;
 			
 			var startCellDiv = gridDiv.find('.startCell').has('circle[colorIndex="' + colorIndex + '"]');
 			if (startCellDiv.length) {
@@ -568,9 +585,7 @@ $(function() {
 					startCellDiv.removeClass('startCell');
 				else
 					cellDiv.addClass('endCell');
-			} else
-				startCellDiv = cellDiv;
-			color = startCellDiv.find('circle').attr('fill');
+			}
 			
 			mouseDown = true;
 			
@@ -578,13 +593,19 @@ $(function() {
 			
 			return false;
 		}).mouseenter(function(e) {
-			if (!mouseDown) return;
 			var cellDiv = $(e.target);
 			if (!cellDiv.is('.cell'))
 				return;
 			
-			//couldn't go forward, then came back
+			unhighlightAll();
 			var cell = getCellByDiv(cellDiv);
+			var obj = gridArray.getObject(cell);
+			highlightCell(cellDiv, obj);
+			
+			if (!mouseDown)
+				return;
+			
+			//couldn't go forward, then came back
 			if (cell == lastCell)
 				return;
 			
@@ -596,6 +617,7 @@ $(function() {
 				unlinkCells(lastCell, cell, true);
 				updateClasses(lastCellDiv, cellDiv);
 				lastCell = cell;
+				highlightCell(cellDiv, gridArray.getObject(cell));
 				return;
 			}
 			
@@ -604,7 +626,6 @@ $(function() {
 				return;
 			
 			//can't move to taken cells, except if it's your end circle
-			var obj = gridArray.getObject(cell);
 			if (obj && !(obj.constructor == Circle && obj.colorIndex == colorIndex))
 				return;
 			
@@ -616,11 +637,13 @@ $(function() {
 					foundLastCell = true;
 					break;
 				}
-			if (!foundLastCell) return;
+			if (!foundLastCell)
+				return;
 			
 			linkCells(lastCell, cell, true, colorIndex, color);
 			updateClasses(lastCellDiv, cellDiv);
 			lastCell = cell;
+			highlightCell(cellDiv, gridArray.getObject(cell));
 		});
 		function mouseUp() {
 			mouseDown = false;
@@ -638,8 +661,13 @@ $(function() {
 				if (didIWin)
 					alert('you win');
 			}
+			
+			lastCell = null;
 		}
-		gridDiv.mouseup(mouseUp);
+		gridDiv.mouseup(mouseUp).mouseleave(function() {
+			mouseUp();
+			unhighlightAll();
+		});
 		$(document).mouseleave(mouseUp);
 	}
 	
@@ -680,16 +708,18 @@ function Cell(index, row, col) {
 	this.col = col;
 }
 
-function Circle(cell, colorIndex, srcCircle, dstCircle, linkedCell) {
+function Circle(cell, colorIndex, color, srcCircle, dstCircle, linkedCell) {
 	this.cell = cell;
 	this.colorIndex = colorIndex;
+	this.color = color;
 	this.srcCircle = srcCircle;
 	this.dstCircle = dstCircle;
 	this.linkedCell = linkedCell;
 }
 
-function Link(colorIndex, step, prevCell, nextCell) {
+function Link(colorIndex, color, step, prevCell, nextCell) {
 	this.colorIndex = colorIndex;
+	this.color = color;
 	this.step = step;
 	this.prevCell = prevCell;
 	this.nextCell = nextCell;
