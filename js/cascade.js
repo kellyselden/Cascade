@@ -14,10 +14,9 @@ $(function() {
 	
 	var cells;
 	var gridArray, solvedGridArray;
-	var endPointDiameter;
-	var endPointRadius;
-	var linkJointDiameter;
-	var linkJointRadius;
+	var cellSize, halfCellSize;
+	var endPointDiameter, endPointRadius;
+	var linkJointDiameter, linkJointRadius;
 	var debug = false;
 	
 	function canCellAcceptSrcCircle(srcCell) {
@@ -124,9 +123,9 @@ $(function() {
 		return getCell(row, col);
 	}
 	
-	function drawCircle(cell, colorIndex, color, diameter, radius) {
+	function drawCircle(cell, cssClass, colorIndex, color, diameter, radius) {
 		getCellDiv(cell).append(
-			$('<svg class="circle" xmlns="http://www.w3.org/2000/svg" version="1.1">' +
+			$('<svg class="' + cssClass + '" xmlns="http://www.w3.org/2000/svg" version="1.1">' +
 				'<circle ' +
 					'cx="' + radius + '" ' +
 					'cy="' + radius + '" ' +
@@ -138,35 +137,39 @@ $(function() {
 				.height(diameter)
 				.width(diameter)
 				.css('position', 'absolute')
-				.css('left', radius)
-				.css('top', radius)
+				.css('left', halfCellSize - radius)
+				.css('top', halfCellSize - radius)
 		);
 	}
 	function drawEndPoint(circle) {
-		drawCircle(circle.cell, circle.colorIndex, 'white', endPointDiameter, endPointRadius);
+		drawCircle(circle.cell, 'endCircle', circle.colorIndex, 'white', endPointDiameter, endPointRadius);
 	}
-	function deleteCircle(circle) {
-		getCellDiv(circle.cell).find('.circle').remove();
+	function deleteCircle(cell, cssClass) {
+		getCellDiv(cell).find('.' + cssClass).remove();
+	}
+	function deleteEndCircle(circle) {
+		deleteCircle(circle.cell, 'endCircle');
 	}
 	function drawDirection(thisCell, nextCell, colorIndex, color) {
-		var y = (nextCell.row - thisCell.row) * endPointDiameter;
-		var x = (nextCell.col - thisCell.col) * endPointDiameter;
+		var y = (nextCell.row - thisCell.row) * halfCellSize;
+		var x = (nextCell.col - thisCell.col) * halfCellSize;
 		function getHtml(linkCell, x, y) {
 			return '<div class="link" colorIndex="' + colorIndex + '" linkCell="' + linkCell.index + '" style="' +
 				'background-color: ' + color + ';' +
-				'height: ' + Math.max(Math.abs(y), 1) + 'px;' +
-				'width: ' + Math.max(Math.abs(x), 1) + 'px;' +
-				'top: ' + Math.max(y || endPointDiameter, 0) + 'px;' +
-				'left: ' + Math.max(x || endPointDiameter, 0) + 'px;' +
+				'height: ' + Math.max(Math.abs(y), linkJointDiameter) + 'px;' +
+				'width: ' + Math.max(Math.abs(x), linkJointDiameter) + 'px;' +
+				'top: ' + Math.max(y || (halfCellSize - linkJointRadius), 0) + 'px;' +
+				'left: ' + Math.max(x || (halfCellSize - linkJointRadius), 0) + 'px;' +
 			'"></div>';
 		}
 		getCellDiv(thisCell).append(getHtml(nextCell, x, y));
 		getCellDiv(nextCell).append(getHtml(thisCell, -x, -y));
-		drawCircle(nextCell, colorIndex, color, linkJointDiameter, linkJointRadius);
+		drawCircle(nextCell, 'linkCircle', colorIndex, color, linkJointDiameter, linkJointRadius);
 	}
 	function deleteDirection(thisCell, nextCell) {
 		getCellDiv(thisCell).find('[linkCell="' + nextCell.index + '"]').remove();
 		getCellDiv(nextCell).find('[linkCell="' + thisCell.index + '"]').remove();
+		deleteCircle(thisCell, 'linkCircle');
 	}
 	
 	//not used
@@ -431,8 +434,8 @@ $(function() {
 				if (!(canPairCircles = pairCircles(srcCircle, dstCircle))) {
 					gridArray.setObject(srcCircle.cell, null);
 					gridArray.setObject(dstCircle.cell, null);
-					deleteCircle(srcCircle);
-					deleteCircle(dstCircle);
+					deleteEndCircle(srcCircle);
+					deleteEndCircle(dstCircle);
 					if (shouldSkipColor(colorIndex)) {
 						historicCirclePlacement.pop();
 						return false;
@@ -455,7 +458,8 @@ $(function() {
 		
 		var cellHeight = (gridHeight - rowCount - 1) / rowCount;
 		var cellWidth = (gridWidth - colCount - 1) / colCount;
-		var cellSize = Math.min(cellHeight, cellWidth);
+		cellSize = Math.min(cellHeight, cellWidth);
+		halfCellSize = cellSize / 2;
 		
 		cells = [];
 		gridArray = new Grid(rowCount, colCount);
@@ -488,9 +492,11 @@ $(function() {
 		var hueMultiplier = 360 / historicCirclePlacement.length;
 		for (var colorIndex = 0; colorIndex < historicCirclePlacement.length; colorIndex++) {
 			var color = convertHsvToRgb(colorIndex * hueMultiplier, 1, 1);
-			gridDiv.find('circle[colorIndex="' + colorIndex + '"]').attr('fill', color);
-			if (debug)
+			gridDiv.find('.endCircle circle[colorIndex="' + colorIndex + '"]').attr('fill', color);
+			if (debug) {
 				gridDiv.find('.link[colorIndex="' + colorIndex + '"]').css('background-color', color);
+				gridDiv.find('.linkCircle circle[colorIndex="' + colorIndex + '"]').attr('fill', color);
+			}
 		}
 		
 		solvedGridArray = gridArray;
@@ -523,7 +529,7 @@ $(function() {
 		var didIWin;
 		function updateClasses(lastCellDiv, curCellDiv) {
 			//code duplication, but easy to understand
-			if (lastCellDiv.find('circle').length) { //moving from circle
+			if (lastCellDiv.find('.endCircle').length) { //moving from circle
 				if (lastCellDiv.hasClass('endCell')) { //leaving from end
 					lastCellDiv.removeClass('endCell');
 					curCellDiv.addClass('endCell');
@@ -531,7 +537,7 @@ $(function() {
 					lastCellDiv.addClass('startCell');
 					curCellDiv.addClass('endCell');
 				}
-			} else if (curCellDiv.find('circle').length) { //reached a circle
+			} else if (curCellDiv.find('.endCircle').length) { //reached a circle
 				if (curCellDiv.hasClass('startCell')) { //back to start
 					lastCellDiv.removeClass('endCell');
 					curCellDiv.removeClass('startCell');
@@ -594,7 +600,7 @@ $(function() {
 			}
 			
 			//already done, don't go further
-			if (lastCellDiv.has('circle').hasClass('endCell'))
+			if (lastCellDiv.has('.endCircle').hasClass('endCell'))
 				return;
 			
 			//can't move to taken cells, except if it's your end circle
