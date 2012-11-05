@@ -479,10 +479,10 @@ $(function() {
 			gridDiv.append(rowDiv);
 		}
 		
-		endPointDiameter = cellSize / 2;
-		endPointRadius = cellSize / 4;
-		linkJointDiameter = cellSize / 6;
-		linkJointRadius = cellSize / 12;
+		endPointDiameter = cellSize * .7;
+		endPointRadius = cellSize * .35;
+		linkJointDiameter = cellSize / 3;
+		linkJointRadius = cellSize / 6;
 		
 		var seed = seedInput.val() || Math.random().toString().substr(2);
 		//seed = '27878770721144974';
