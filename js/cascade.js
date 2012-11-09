@@ -1,12 +1,14 @@
 $(function() {
 	var gridDiv = $('#grid');
-	var rowsInput = $('#rows');
-	var colsInput = $('#cols');
+	var rowsInput = $('#rows').val($.url.getQuery('rows') || 4);
+	var colsInput = $('#cols').val($.url.getQuery('cols') || 4);
+	var colors = parseInt($.url.getQuery('colors') || 0);
 	var defaultColors = $('#defaultColors');
 	var randomColors = $('#randomColors');
 	var specifyColors = $('#specifyColors');
-	var seedInput = $('#seed');
-	
+	var numOfColorsInput = $('#numOfColors').val(colors > 0 ? colors : '');
+	var seedInput = $('#seed').val($.url.getQuery('seed'));
+
 	var gridHeight = gridDiv.height();
 	var gridWidth = gridDiv.width();
 	
@@ -455,7 +457,7 @@ $(function() {
 		
 		numOfColors = defaultColors.attr('checked') == 'checked'
 			? Math.min(rowCount, colCount) : randomColors.attr('checked') == 'checked'
-			? -1 : parseInt($('#numOfColors').val());
+			? -1 : parseInt(numOfColorsInput.val());
 		
 		var cellHeight = (gridHeight - rowCount - 1) / rowCount;
 		var cellWidth = (gridWidth - colCount - 1) / colCount;
@@ -675,10 +677,18 @@ $(function() {
 	$('[name="colors"]').change(function() {
 		$('#specifyColorsDiv').toggle(specifyColors.attr('checked') == 'checked');
 	});
+	switch(colors) {
+		case -1:
+			randomColors.click();
+			break;
+		case 0:
+			defaultColors.click();
+			break;
+		default:
+			specifyColors.click();
+			break;
+	}
 	generateButton.click(generate);
-	rowsInput.val(4);
-	colsInput.val(4);
-	defaultColors.click();
 	generateButton.click();
 });
 
