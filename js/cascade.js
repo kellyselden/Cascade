@@ -524,6 +524,11 @@ $(function() {
 		$('#colsLabel').text(colCount);
 		$('#numOfColorsLabel').text(historicCirclePlacement.length);
 		$('#seedLabel').text(seed);
+		$('#share').val($.url.getPath() + '?' +
+			'rows=' + rowCount + '&' +
+			'cols=' + colCount + '&' +
+			'colors=' + colors + '&' +
+			'seed=' + seed);
 		
 		play();
 	}
